@@ -1,8 +1,11 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace DavideDiDonato.CinemaBookingSystem.Domain;
 
-public class Movie(ICollection<Screening> screenings)
+public class Movie
 {
     public int Id { get; set; }
+    [MinLength(1)]
     public required string Name { get; set; }
-    public ICollection<Screening> Screenings { get; set; } = screenings;
+    public ICollection<Screening> Screenings { get; set; } = new List<Screening>();
 }

@@ -6,4 +6,16 @@
         <Nullable>enable</Nullable>
     </PropertyGroup>
 
+    <ItemGroup>
+      <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\DavideDiDonato.CinemaBookingSystem.Domain\DavideDiDonato.CinemaBookingSystem.Domain.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Folder Include="Database\Migrations\" />
+    </ItemGroup>
+
 </Project>
