@@ -1,0 +1,60 @@
+name: PR checks
+
+# Runs on every pull request targeting main; results appear as checks on the PR.
+# Two jobs: fast unit tests, and Testcontainers-backed integration tests (the
+# GitHub-hosted ubuntu runners ship with Docker, so the throwaway Postgres the
+# integration suite needs comes up in-job — no external stack required).
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  BUILD_CONFIGURATION: "Release"
+
+defaults:
+  run:
+    working-directory: DavideDiDonato.CinemaBookingSystem
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET 10.x
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.x'
+
+      - name: Restore
+        run: dotnet restore DavideDiDonato.CinemaBookingSystem.sln
+
+      - name: Build
+        run: dotnet build DavideDiDonato.CinemaBookingSystem.sln --no-restore --configuration "${{ env.BUILD_CONFIGURATION }}"
+
+      - name: Unit tests
+        run: dotnet test DavideDiDonato.CinemaBookingSystem.UnitTest --no-build --configuration "${{ env.BUILD_CONFIGURATION }}" --logger "console;verbosity=normal"
+
+  integration-tests:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET 10.x
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.x'
+
+      - name: Restore
+        run: dotnet restore DavideDiDonato.CinemaBookingSystem.sln
+
+      - name: Build
+        run: dotnet build DavideDiDonato.CinemaBookingSystem.sln --no-restore --configuration "${{ env.BUILD_CONFIGURATION }}"
+
+      - name: Integration tests
+        run: dotnet test DavideDiDonato.CinemaBookingSystem.IntegrationTests --no-build --configuration "${{ env.BUILD_CONFIGURATION }}" --logger "console;verbosity=normal"
