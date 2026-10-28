@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace DavideDiDonato.CinemaBookingSystem.Infrastructure.Database.Migrations
 {
     [DbContext(typeof(CinemaBookingSystemDbContext))]
-    [Migration("20261026171216_Initial")]
+    [Migration("20261028110142_Initial")]
     partial class Initial
     {
         /// <inheritdoc />
@@ -27,10 +27,16 @@ namespace DavideDiDonato.CinemaBookingSystem.Infrastructure.Database.Migrations
 
             modelBuilder.Entity("DavideDiDonato.CinemaBookingSystem.Domain.Booking", b =>
                 {
-                    b.Property<int>("ScreeningId")
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("integer");
 
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
                     b.Property<int>("RowId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("ScreeningId")
                         .HasColumnType("integer");
 
                     b.Property<int>("SeatNumber")
@@ -39,11 +45,14 @@ namespace DavideDiDonato.CinemaBookingSystem.Infrastructure.Database.Migrations
                     b.Property<int>("UserId")
                         .HasColumnType("integer");
 
-                    b.HasKey("ScreeningId", "RowId", "SeatNumber", "UserId");
+                    b.HasKey("Id");
 
-                    b.HasIndex("RowId");
+                    b.HasIndex("ScreeningId");
 
-                    b.ToTable("Booking");
+                    b.HasIndex("RowId", "SeatNumber", "ScreeningId")
+                        .IsUnique();
+
+                    b.ToTable("Bookings");
                 });
 
             modelBuilder.Entity("DavideDiDonato.CinemaBookingSystem.Domain.Movie", b =>
@@ -60,7 +69,7 @@ namespace DavideDiDonato.CinemaBookingSystem.Infrastructure.Database.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Movie");
+                    b.ToTable("Movies");
                 });
 
             modelBuilder.Entity("DavideDiDonato.CinemaBookingSystem.Domain.Row", b =>
@@ -84,7 +93,7 @@ namespace DavideDiDonato.CinemaBookingSystem.Infrastructure.Database.Migrations
 
                     b.HasIndex("ScreenId");
 
-                    b.ToTable("Row");
+                    b.ToTable("Rows");
                 });
 
             modelBuilder.Entity("DavideDiDonato.CinemaBookingSystem.Domain.Screen", b =>
@@ -100,7 +109,7 @@ namespace DavideDiDonato.CinemaBookingSystem.Infrastructure.Database.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Screen");
+                    b.ToTable("Screens");
                 });
 
             modelBuilder.Entity("DavideDiDonato.CinemaBookingSystem.Domain.Screening", b =>
@@ -124,7 +133,7 @@ namespace DavideDiDonato.CinemaBookingSystem.Infrastructure.Database.Migrations
 
                     b.HasIndex("MovieId");
 
-                    b.ToTable("Screening");
+                    b.ToTable("Screenings");
                 });
 
             modelBuilder.Entity("DavideDiDonato.CinemaBookingSystem.Domain.Booking", b =>

@@ -13,7 +13,7 @@ namespace DavideDiDonato.CinemaBookingSystem.Infrastructure.Database.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.CreateTable(
-                name: "Movie",
+                name: "Movies",
                 columns: table => new
                 {
                     Id = table.Column<int>(type: "integer", nullable: false)
@@ -22,11 +22,11 @@ namespace DavideDiDonato.CinemaBookingSystem.Infrastructure.Database.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Movie", x => x.Id);
+                    table.PrimaryKey("PK_Movies", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
-                name: "Screen",
+                name: "Screens",
                 columns: table => new
                 {
                     Id = table.Column<int>(type: "integer", nullable: false)
@@ -35,11 +35,11 @@ namespace DavideDiDonato.CinemaBookingSystem.Infrastructure.Database.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Screen", x => x.Id);
+                    table.PrimaryKey("PK_Screens", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
-                name: "Screening",
+                name: "Screenings",
                 columns: table => new
                 {
                     Id = table.Column<int>(type: "integer", nullable: false)
@@ -50,17 +50,17 @@ namespace DavideDiDonato.CinemaBookingSystem.Infrastructure.Database.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Screening", x => x.Id);
+                    table.PrimaryKey("PK_Screenings", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_Screening_Movie_MovieId",
+                        name: "FK_Screenings_Movies_MovieId",
                         column: x => x.MovieId,
-                        principalTable: "Movie",
+                        principalTable: "Movies",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
-                name: "Row",
+                name: "Rows",
                 columns: table => new
                 {
                     Id = table.Column<int>(type: "integer", nullable: false)
@@ -71,19 +71,21 @@ namespace DavideDiDonato.CinemaBookingSystem.Infrastructure.Database.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Row", x => x.Id);
+                    table.PrimaryKey("PK_Rows", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_Row_Screen_ScreenId",
+                        name: "FK_Rows_Screens_ScreenId",
                         column: x => x.ScreenId,
-                        principalTable: "Screen",
+                        principalTable: "Screens",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
-                name: "Booking",
+                name: "Bookings",
                 columns: table => new
                 {
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     UserId = table.Column<int>(type: "integer", nullable: false),
                     ScreeningId = table.Column<int>(type: "integer", nullable: false),
                     RowId = table.Column<int>(type: "integer", nullable: false),
@@ -91,34 +93,40 @@ namespace DavideDiDonato.CinemaBookingSystem.Infrastructure.Database.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Booking", x => new { x.ScreeningId, x.RowId, x.SeatNumber, x.UserId });
+                    table.PrimaryKey("PK_Bookings", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_Booking_Row_RowId",
+                        name: "FK_Bookings_Rows_RowId",
                         column: x => x.RowId,
-                        principalTable: "Row",
+                        principalTable: "Rows",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
-                        name: "FK_Booking_Screening_ScreeningId",
+                        name: "FK_Bookings_Screenings_ScreeningId",
                         column: x => x.ScreeningId,
-                        principalTable: "Screening",
+                        principalTable: "Screenings",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateIndex(
-                name: "IX_Booking_RowId",
-                table: "Booking",
-                column: "RowId");
+                name: "IX_Bookings_RowId_SeatNumber_ScreeningId",
+                table: "Bookings",
+                columns: new[] { "RowId", "SeatNumber", "ScreeningId" },
+                unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_Row_ScreenId",
-                table: "Row",
+                name: "IX_Bookings_ScreeningId",
+                table: "Bookings",
+                column: "ScreeningId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Rows_ScreenId",
+                table: "Rows",
                 column: "ScreenId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Screening_MovieId",
-                table: "Screening",
+                name: "IX_Screenings_MovieId",
+                table: "Screenings",
                 column: "MovieId");
         }
 
@@ -126,19 +134,19 @@ namespace DavideDiDonato.CinemaBookingSystem.Infrastructure.Database.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
-                name: "Booking");
+                name: "Bookings");
 
             migrationBuilder.DropTable(
-                name: "Row");
+                name: "Rows");
 
             migrationBuilder.DropTable(
-                name: "Screening");
+                name: "Screenings");
 
             migrationBuilder.DropTable(
-                name: "Screen");
+                name: "Screens");
 
             migrationBuilder.DropTable(
-                name: "Movie");
+                name: "Movies");
         }
     }
 }

@@ -5,6 +5,12 @@ namespace DavideDiDonato.CinemaBookingSystem.Infrastructure.Database;
 
 public class CinemaBookingSystemDbContext(DbContextOptions options) : DbContext(options)
 {
+    public DbSet<Movie> Movies { get; set; }
+    public DbSet<Row> Rows { get; set; }
+    public DbSet<Screen> Screens { get; set; }
+    public DbSet<Screening> Screenings { get; set; }
+    public DbSet<Booking> Bookings { get; set; }
+    
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -39,9 +45,9 @@ public class CinemaBookingSystemDbContext(DbContextOptions options) : DbContext(
 
         modelBuilder.Entity<Booking>(e =>
         {
-            e.HasKey(booking => new {
-                booking.ScreeningId, booking.RowId, booking.SeatNumber, booking.UserId
-            });
+            e.HasKey(booking => booking.Id);
+
+            e.HasIndex(booking => new { booking.RowId, booking.SeatNumber, booking.ScreeningId }).IsUnique();
         });
     }
 }

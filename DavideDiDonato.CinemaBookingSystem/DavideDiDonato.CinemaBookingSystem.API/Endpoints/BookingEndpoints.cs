@@ -12,7 +12,8 @@ public static class BookingEndpoints
     public static IEndpointRouteBuilder MapBookingEndpoints(this IEndpointRouteBuilder endpoints)
     {
         RouteGroupBuilder bookingGroup = endpoints.MapGroup("/bookings")
-            .WithTags("Bookings");
+            .WithTags("Bookings")
+            .RequireAuthorization();
 
         bookingGroup.MapPost("/", BookScreenings);
         bookingGroup.MapGet("/", IsScreeningBookingAvailable);

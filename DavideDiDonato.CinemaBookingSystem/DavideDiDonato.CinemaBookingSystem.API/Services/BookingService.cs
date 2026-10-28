@@ -80,6 +80,8 @@ public class BookingService(CinemaBookingSystemDbContext dbContext) : IBookingSe
                 booking.SeatNumber = bookingRequest.SeatNumber!.Value;
                 await GetBookingScreenAsync(booking, cancellationToken);
             }
+            
+            bookings.Add(booking);
         }
 
         await dbContext.Bookings.AddRangeAsync(bookings, cancellationToken);
@@ -169,7 +171,9 @@ public class BookingService(CinemaBookingSystemDbContext dbContext) : IBookingSe
         CancellationToken cancellationToken)
     {
         Booking? booking =
-            await dbContext.Bookings.FindAsync([screeningId, rowId, seatNumber], cancellationToken: cancellationToken);
+            await dbContext.Bookings.Where(e =>
+                    e.ScreeningId == screeningId && e.RowId == rowId && e.SeatNumber == seatNumber)
+                .FirstOrDefaultAsync(cancellationToken);
         if (booking != null) return false;
         booking = new Booking
         {

@@ -4,6 +4,7 @@ namespace DavideDiDonato.CinemaBookingSystem.Domain;
 
 public class Booking
 {
+    public int Id { get; set; }
     public int UserId { get; set; }
     public int ScreeningId { get; set; }
     public int RowId { get; set; }
