@@ -15,73 +15,94 @@ public class BookingService(CinemaBookingSystemDbContext dbContext) : IBookingSe
     {
         int currentUserId = int.Parse(currentUser.FindFirst(e => e.Type == ClaimTypes.NameIdentifier)!.Value);
         List<Booking> bookings = new List<Booking>();
-        foreach (BookingRequest bookingRequest in bookingRequests)
+        foreach (IGrouping<int, BookingRequest> screeningBookingRequests in bookingRequests
+                     .GroupBy(bookingRequest => bookingRequest.ScreeningId))
         {
-            if ((bookingRequest.RowId == null && bookingRequest.SeatNumber != null) ||
-                (bookingRequest.RowId != null && bookingRequest.SeatNumber == null))
-                throw new CinemaBookingSystemApiException(HttpStatusCode.BadRequest,
-                    "Cannot book by favourite row or seat");
-
-            Booking booking = new Booking
+            int screeningId = screeningBookingRequests.Key;
+            Dictionary<int, HashSet<int>> bookedSeatsByRow = await dbContext.Bookings
+                .Where(booking => booking.ScreeningId == screeningId)
+                .GroupBy(booking => booking.RowId)
+                .ToDictionaryAsync(group => group.Key, group => group.Select(booking => booking.SeatNumber).ToHashSet(),
+                    cancellationToken);
+            foreach (BookingRequest bookingRequest in screeningBookingRequests)
             {
-                UserId = currentUserId,
-                ScreeningId = bookingRequest.ScreeningId
-            };
+                if ((bookingRequest.RowId == null && bookingRequest.SeatNumber != null) ||
+                    (bookingRequest.RowId != null && bookingRequest.SeatNumber == null))
+                    throw new CinemaBookingSystemApiException(HttpStatusCode.BadRequest,
+                        "Cannot book by favourite row or seat");
 
-            if (bookingRequest.RowId == null) // it means also the seat is null
-            {
-                Screen bookingScreen = await GetBookingScreenAsync(booking, cancellationToken, enforceValidity: false);
-                Dictionary<int, HashSet<int>> bookedSeatsByRow =
-                    await dbContext.Bookings.Where(e => e.ScreeningId == booking.ScreeningId)
-                        .GroupBy(e => e.RowId)
-                        .ToDictionaryAsync(e => e.Key, e => e.Select(e => e.SeatNumber).ToHashSet(), cancellationToken);
-                Seat? finalSeat = null;
-                List<Row> orderedRows = bookingScreen.Rows.OrderBy(e => e.Number).ToList();
-                // let's say that the best row is the central one and every row is horizontally centered with respect to the screen
-                int rowUpperSearchIndex = bookingScreen.Rows.Count / 2;
-                int rowLowerSearchIndex = rowUpperSearchIndex;
-                while (rowUpperSearchIndex <= bookingScreen.Rows.Count && rowLowerSearchIndex >= 1)
+                Booking booking = new Booking
                 {
-                    Row actualRow = orderedRows[rowUpperSearchIndex];
+                    UserId = currentUserId,
+                    ScreeningId = bookingRequest.ScreeningId
+                };
 
-                    Seat? candidateBestSeat =
-                        FindFirstBestSeat(actualRow, orderedRows, rowUpperSearchIndex, bookedSeatsByRow);
-                    if (finalSeat == null || (candidateBestSeat != null && candidateBestSeat.Score > finalSeat.Score))
-                        finalSeat = candidateBestSeat;
-
-                    if (rowUpperSearchIndex == rowLowerSearchIndex)
+                if (bookingRequest.RowId == null) // it means also the seat is null
+                {
+                    Screen bookingScreen =
+                        await GetBookingScreenAsync(booking, cancellationToken, enforceValidity: false);
+                    Seat? finalSeat = null;
+                    List<Row> orderedRows = bookingScreen.Rows.OrderBy(e => e.Number).ToList();
+                    // let's say that the best row is the central one and every row is horizontally centered with respect to the screen
+                    int rowUpperSearchIndex = bookingScreen.Rows.Count / 2;
+                    int rowLowerSearchIndex = rowUpperSearchIndex;
+                    while (rowUpperSearchIndex < bookingScreen.Rows.Count || rowLowerSearchIndex >= 0)
                     {
+                        Seat? candidateBestSeat = null;
+                        if (rowUpperSearchIndex < bookingScreen.Rows.Count)
+                        {
+                            candidateBestSeat = FindFirstBestSeat(orderedRows[rowUpperSearchIndex], orderedRows,
+                                rowUpperSearchIndex, bookedSeatsByRow);
+                            if (finalSeat == null ||
+                                (candidateBestSeat != null && candidateBestSeat.Score > finalSeat.Score))
+                                finalSeat = candidateBestSeat;
+                        }
+
+                        if (rowUpperSearchIndex == rowLowerSearchIndex || rowLowerSearchIndex < 0)
+                        {
+                            rowUpperSearchIndex++;
+                            rowLowerSearchIndex--;
+                            if (finalSeat != null) break;
+                            continue;
+                        }
+
+                        candidateBestSeat =
+                            FindFirstBestSeat(orderedRows[rowLowerSearchIndex], orderedRows, rowLowerSearchIndex,
+                                bookedSeatsByRow);
+
+                        if (finalSeat == null ||
+                            (candidateBestSeat != null && candidateBestSeat.Score > finalSeat.Score))
+                            finalSeat = candidateBestSeat;
+
                         rowUpperSearchIndex++;
                         rowLowerSearchIndex--;
-                        if (finalSeat != null) break;
-                        continue;
                     }
 
-                    candidateBestSeat =
-                        FindFirstBestSeat(actualRow, orderedRows, rowLowerSearchIndex, bookedSeatsByRow);
-
-                    if (finalSeat == null || (candidateBestSeat != null && candidateBestSeat.Score > finalSeat.Score))
-                        finalSeat = candidateBestSeat;
-
-                    rowUpperSearchIndex++;
-                    rowLowerSearchIndex--;
+                    if (finalSeat != null)
+                    {
+                        booking.RowId = finalSeat.RowId;
+                        booking.SeatNumber = finalSeat.Number;
+                    }
+                    else
+                        throw new CinemaBookingSystemApiException(HttpStatusCode.Conflict,
+                            "Not every booking could be confirmed");
                 }
-
-                if (finalSeat != null)
+                else
                 {
-                    booking.RowId = finalSeat.RowId;
-                    booking.SeatNumber = finalSeat.Number;
+                    if (bookedSeatsByRow.ContainsKey(bookingRequest.RowId.Value) &&
+                        bookedSeatsByRow[bookingRequest.RowId.Value].Contains(bookingRequest.SeatNumber!.Value))
+                        throw new CinemaBookingSystemApiException(HttpStatusCode.Conflict,
+                            "The requested seat is taken");
+                    booking.RowId = bookingRequest.RowId.Value;
+                    booking.SeatNumber = bookingRequest.SeatNumber!.Value;
+                    await GetBookingScreenAsync(booking, cancellationToken);
                 }
-                else throw new CinemaBookingSystemApiException(HttpStatusCode.Conflict, "Not every booking could be confirmed");
+
+                HashSet<int> bookedSeats = bookedSeatsByRow.GetValueOrDefault(booking.RowId, []);
+                bookedSeats.Add(booking.SeatNumber);
+                bookedSeatsByRow[booking.RowId] = bookedSeats;
+                bookings.Add(booking);
             }
-            else
-            {
-                booking.RowId = bookingRequest.RowId.Value;
-                booking.SeatNumber = bookingRequest.SeatNumber!.Value;
-                await GetBookingScreenAsync(booking, cancellationToken);
-            }
-            
-            bookings.Add(booking);
         }
 
         await dbContext.Bookings.AddRangeAsync(bookings, cancellationToken);
@@ -144,7 +165,7 @@ public class BookingService(CinemaBookingSystemDbContext dbContext) : IBookingSe
 
     private async Task<Screening> GetBookingScreeningIfValid(Booking? booking, CancellationToken cancellationToken)
     {
-        if (booking == null) throw new CinemaBookingSystemApiException(HttpStatusCode.BadRequest, "Booking is null");
+        if (booking == null) throw new CinemaBookingSystemApiException(HttpStatusCode.NotFound, "Booking is null");
 
         Screening? screening = await dbContext.Screenings.FindAsync([booking.ScreeningId], cancellationToken);
         if (screening == null)
