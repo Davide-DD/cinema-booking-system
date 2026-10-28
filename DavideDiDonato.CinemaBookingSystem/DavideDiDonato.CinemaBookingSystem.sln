@@ -6,6 +6,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DavideDiDonato.CinemaBookin
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DavideDiDonato.CinemaBookingSystem.Domain", "DavideDiDonato.CinemaBookingSystem.Domain\DavideDiDonato.CinemaBookingSystem.Domain.csproj", "{76BE7414-0F77-42C7-B514-CAD86F811358}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DavideDiDonato.CinemaBookingSystem.UnitTest", "DavideDiDonato.CinemaBookingSystem.UnitTest\DavideDiDonato.CinemaBookingSystem.UnitTest.csproj", "{3A69C6F4-1E3B-4F0C-BAD2-F304AA2D7C62}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DavideDiDonato.CinemaBookingSystem.IntegrationTests", "DavideDiDonato.CinemaBookingSystem.IntegrationTests\DavideDiDonato.CinemaBookingSystem.IntegrationTests.csproj", "{F1009D22-52CC-4C29-A74E-481C4229F689}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -24,5 +28,13 @@ Global
 		{76BE7414-0F77-42C7-B514-CAD86F811358}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{76BE7414-0F77-42C7-B514-CAD86F811358}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{76BE7414-0F77-42C7-B514-CAD86F811358}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3A69C6F4-1E3B-4F0C-BAD2-F304AA2D7C62}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3A69C6F4-1E3B-4F0C-BAD2-F304AA2D7C62}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3A69C6F4-1E3B-4F0C-BAD2-F304AA2D7C62}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3A69C6F4-1E3B-4F0C-BAD2-F304AA2D7C62}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F1009D22-52CC-4C29-A74E-481C4229F689}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F1009D22-52CC-4C29-A74E-481C4229F689}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F1009D22-52CC-4C29-A74E-481C4229F689}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F1009D22-52CC-4C29-A74E-481C4229F689}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
