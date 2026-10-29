@@ -39,6 +39,15 @@ public class MovieService(CinemaBookingSystemDbContext dbContext): IMovieService
             .Include(e => e.Screenings)
             .FirstOrDefaultAsync(cancellationToken);
         if (existingMovie == null && movie.Id != 0) throw new CinemaBookingSystemApiException(HttpStatusCode.NotFound, "Movie doesn't exist");
+        foreach (Screening screening in movie.Screenings)
+        {
+            if (screening.DateTime.ToUniversalTime() > DateTime.UtcNow) continue;
+            Screening? existingScreening = existingMovie?.Screenings.FirstOrDefault(e => e.Id == screening.Id);
+            if (existingScreening == null ||
+                existingScreening.DateTime.ToUniversalTime() != screening.DateTime.ToUniversalTime())
+                throw new CinemaBookingSystemApiException(HttpStatusCode.BadRequest,
+                    "New or rescheduled screenings must be in the future");
+        }
         if (movie.Id == 0) await dbContext.Movies.AddAsync(movie, cancellationToken);
         else
         {

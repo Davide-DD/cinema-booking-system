@@ -200,6 +200,35 @@ public class MovieTests(CinemaBookingSystemFixture cinemaBookingSystemFixture) :
     }
 
     [Fact]
+    public async Task CreateOrUpdateMovie_InputScreeningMovedToPast_ReturnsBadRequest()
+    {
+        using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient(asAdmin: true);
+        Movie movie = (await CommonGetMovie(1))!;
+        movie.Screenings.Single(screening => screening.Id == 1).DateTime = DateTime.UtcNow.AddDays(-1);
+
+        using HttpResponseMessage response = await client.PutAsJsonAsync("/movies/1", movie);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task CreateOrUpdateMovie_InputExistingMovieWithUnchangedPastScreening_UpdatesName()
+    {
+        using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient(asAdmin: true);
+        await CommonAddPastScreening();
+        Movie movie = (await CommonGetMovie(1))!;
+        movie.Name = "The Lord of the Rings";
+
+        using HttpResponseMessage response = await client.PutAsJsonAsync("/movies/1", movie);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Movie? updatedMovie = await CommonGetMovie(1);
+        Assert.NotNull(updatedMovie);
+        Assert.Equal("The Lord of the Rings", updatedMovie.Name);
+        Assert.Equal(3, updatedMovie.Screenings.Count);
+    }
+
+    [Fact]
     public async Task CreateOrUpdateMovie_InputNoAdmin_ReturnsForbidden()
     {
         using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient();
@@ -252,6 +281,24 @@ public class MovieTests(CinemaBookingSystemFixture cinemaBookingSystemFixture) :
             .Include(movie => movie.Screenings)
             .AsNoTracking()
             .FirstOrDefaultAsync(movie => movie.Id == id);
+
+        return result;
+    }
+
+    private async Task<Screening> CommonAddPastScreening()
+    {
+        using IServiceScope scope = cinemaBookingSystemFixture.CreateScope();
+        CinemaBookingSystemDbContext cinemaBookingSystemDbContext =
+            scope.ServiceProvider.GetRequiredService<CinemaBookingSystemDbContext>();
+
+        Screening result = new Screening
+        {
+            ScreenId = 1,
+            MovieId = 1,
+            DateTime = DateTime.UtcNow.AddDays(-1)
+        };
+        cinemaBookingSystemDbContext.Screenings.Add(result);
+        await cinemaBookingSystemDbContext.SaveChangesAsync();
 
         return result;
     }
