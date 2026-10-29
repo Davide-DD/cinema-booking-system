@@ -9,7 +9,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace DavideDiDonato.CinemaBookingSystem.API.Services;
 
-public class MovieService(CinemaBookingSystemDbContext dbContext): IMovieService
+public class MovieService(CinemaBookingSystemDbContext dbContext, IScreenService screenService): IMovieService
 {
     public async Task<Movie[]> GetMoviesAsync(ClaimsPrincipal currentUser, int page, int pageSize, CancellationToken cancellationToken)
     {
@@ -51,6 +51,12 @@ public class MovieService(CinemaBookingSystemDbContext dbContext): IMovieService
             if (existingScreening == null || existingScreening.DateTime != screening.DateTime)
                 throw new CinemaBookingSystemApiException(HttpStatusCode.BadRequest,
                     "New or rescheduled screenings must be in the future");
+        }
+        foreach (int screenId in movie.Screenings.Select(e => e.ScreenId).Distinct())
+        {
+            Screen? screen = await screenService.GetScreenAsync(screenId, cancellationToken);
+            if (screen == null)
+                throw new CinemaBookingSystemApiException(HttpStatusCode.BadRequest, "The screen doesn't exist");
         }
         if (movie.Id == 0) await dbContext.Movies.AddAsync(movie, cancellationToken);
         else

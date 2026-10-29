@@ -24,7 +24,7 @@ The API is a single service split into three domains:
 | Venue | Screens and their rows | `/screens` | `ScreenService` |
 | Booking | Bookings | `/bookings` | `BookingService` |
 
-Each service reads and writes only the tables of its own domain. Booking needs the date of a screening and the rows of its screen: it asks `MovieService.GetScreeningAsync` and `ScreenService.GetScreenAsync` for them instead of querying their tables. Entities refer to other domains only by id (`Booking.ScreeningId`, `Booking.RowId`, `Screening.ScreenId`), never through navigation properties.
+Each service reads and writes only the tables of its own domain. Booking needs the date of a screening and the rows of its screen: it asks `MovieService.GetScreeningAsync` and `ScreenService.GetScreenAsync` for them instead of querying their tables. In the same way, Programming asks `ScreenService.GetScreenAsync` whether the screen of a screening exists. Entities refer to other domains only by id (`Booking.ScreeningId`, `Booking.RowId`, `Screening.ScreenId`), never through navigation properties.
 
 A single service with one database is enough for this size: a booking is saved in one transaction and there is nothing to keep in sync. To split it into separate services:
 
