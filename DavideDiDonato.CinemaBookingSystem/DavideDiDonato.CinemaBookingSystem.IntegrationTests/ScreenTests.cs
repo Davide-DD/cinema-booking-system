@@ -159,6 +159,26 @@ public class ScreenTests(CinemaBookingSystemFixture cinemaBookingSystemFixture) 
     }
 
     [Fact]
+    public async Task CreateOrUpdateScreen_InputExistingScreenWithTwoNewRows_AddsBothRows()
+    {
+        using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient(asAdmin: true);
+        Screen screen = (await CommonGetScreen(1))!;
+        foreach (int rowNumber in new[] { 4, 5 })
+            screen.Rows.Add(new Row
+            {
+                Number = rowNumber,
+                Seats = 10,
+                ScreenId = 1
+            });
+
+        using HttpResponseMessage response = await client.PutAsJsonAsync("/screens/1", screen);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Screen? updatedScreen = await CommonGetScreen(1);
+        Assert.Equal(5, updatedScreen?.Rows.Count);
+    }
+
+    [Fact]
     public async Task CreateOrUpdateScreen_InputRowsWithAnotherScreenId_KeepsRowsInScreen()
     {
         using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient(asAdmin: true);

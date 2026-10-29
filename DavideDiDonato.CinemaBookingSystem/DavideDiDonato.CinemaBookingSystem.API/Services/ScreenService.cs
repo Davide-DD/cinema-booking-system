@@ -63,11 +63,9 @@ public class ScreenService(CinemaBookingSystemDbContext dbContext) : IScreenServ
                 if (modifiedRow == null) dbContext.Rows.Remove(row);
                 else dbContext.Rows.Entry(row).CurrentValues.SetValues(modifiedRow);
             }
-            foreach (Row row in screen.Rows)
-            {
-                if (existingScreen.Rows.Any(e => e.Id == row.Id)) continue;
+            // Added rows join the tracked ones with id 0 until saved, so new ones are told apart by their id
+            foreach (Row row in screen.Rows.Where(e => e.Id == 0))
                 await dbContext.Rows.AddAsync(row, cancellationToken);
-            }
         }
         await dbContext.SaveChangesAsync(cancellationToken);
         return existingScreen;

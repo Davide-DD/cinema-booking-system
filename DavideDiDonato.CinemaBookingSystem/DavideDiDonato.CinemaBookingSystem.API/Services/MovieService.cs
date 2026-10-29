@@ -73,11 +73,9 @@ public class MovieService(CinemaBookingSystemDbContext dbContext, IScreenService
                 if (modifiedScreening == null) dbContext.Screenings.Remove(screening);
                 else dbContext.Screenings.Entry(screening).CurrentValues.SetValues(modifiedScreening);
             }
-            foreach (Screening screening in movie.Screenings)
-            {
-                if (existingMovie.Screenings.Any(e => e.Id == screening.Id)) continue;
+            // Added screenings join the tracked ones with id 0 until saved, so new ones are told apart by their id
+            foreach (Screening screening in movie.Screenings.Where(e => e.Id == 0))
                 await dbContext.Screenings.AddAsync(screening, cancellationToken);
-            }
         }
         await dbContext.SaveChangesAsync(cancellationToken);
         return movie;

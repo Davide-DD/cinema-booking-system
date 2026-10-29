@@ -206,6 +206,29 @@ public class MovieTests(CinemaBookingSystemFixture cinemaBookingSystemFixture) :
     }
 
     [Fact]
+    public async Task CreateOrUpdateMovie_InputExistingMovieWithTwoNewScreenings_AddsBothScreenings()
+    {
+        using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient(asAdmin: true);
+        Movie movie = (await CommonGetMovie(1))!;
+        foreach (int days in new[] { 6, 7 })
+            movie.Screenings.Add(new Screening
+            {
+                ScreenId = 1,
+                MovieId = 1,
+                DateTime = DateTime.UtcNow.AddDays(days)
+            });
+
+        using HttpResponseMessage response = await client.PutAsJsonAsync("/movies/1", movie);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Movie? responseMovie = await response.Content.ReadFromJsonAsync<Movie>();
+        Assert.NotNull(responseMovie);
+        Assert.All(responseMovie.Screenings, screening => Assert.NotEqual(0, screening.Id));
+        Movie? updatedMovie = await CommonGetMovie(1);
+        Assert.Equal(4, updatedMovie?.Screenings.Count);
+    }
+
+    [Fact]
     public async Task CreateOrUpdateMovie_InputScreeningsWithAnotherMovieId_KeepsScreeningsInMovie()
     {
         using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient(asAdmin: true);
