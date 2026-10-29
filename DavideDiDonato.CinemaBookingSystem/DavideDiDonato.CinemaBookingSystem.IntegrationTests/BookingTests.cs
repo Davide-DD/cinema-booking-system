@@ -398,6 +398,16 @@ public class BookingTests(CinemaBookingSystemFixture cinemaBookingSystemFixture)
     }
 
     [Fact]
+    public async Task IsScreeningBookingAvailable_InputSeatZero_ReturnsBadRequest()
+    {
+        using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient();
+
+        using HttpResponseMessage response = await client.GetAsync("/bookings?screeningId=1&rowId=1&seatNumber=0");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
     public async Task DeleteBooking_InputExistingId_ReturnsNoContent()
     {
         using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient(userId: 1);

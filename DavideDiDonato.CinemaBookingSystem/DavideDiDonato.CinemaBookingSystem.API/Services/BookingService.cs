@@ -176,8 +176,8 @@ public class BookingService(CinemaBookingSystemDbContext dbContext, IMovieServic
         Screen? screen = await screenService.GetScreenAsync(screening.ScreenId, cancellationToken);
         if (screen == null)
             throw new CinemaBookingSystemApiException(HttpStatusCode.BadRequest, "The screen doesn't exist");
-        if (enforceValidity && screen.Rows.All(e =>
-                e.Id != booking!.RowId || (e.Id == booking.RowId && e.Seats < booking.SeatNumber)))
+        if (enforceValidity && (booking!.SeatNumber < 1 || screen.Rows.All(e =>
+                e.Id != booking.RowId || (e.Id == booking.RowId && e.Seats < booking.SeatNumber))))
             throw new CinemaBookingSystemApiException(HttpStatusCode.BadRequest, "The row or seat doesn't exist");
 
         return screen;
