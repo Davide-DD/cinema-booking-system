@@ -14,6 +14,25 @@ Built with .NET 10 minimal APIs, Entity Framework Core on PostgreSQL, xUnit and 
 | `DavideDiDonato.CinemaBookingSystem.UnitTest` | Unit tests for the seat scoring |
 | `DavideDiDonato.CinemaBookingSystem.IntegrationTests` | API tests against a real PostgreSQL started by Testcontainers |
 
+## Domains
+
+The API is a single service split into three domains:
+
+| Domain | Owns | Endpoints | Service |
+|---|---|---|---|
+| Programming | Movies and their screenings | `/movies` | `MovieService` |
+| Venue | Screens and their rows | `/screens` | `ScreenService` |
+| Booking | Bookings | `/bookings` | `BookingService` |
+
+Each service reads and writes only the tables of its own domain. Booking needs the date of a screening and the rows of its screen: it asks `MovieService.GetScreeningAsync` and `ScreenService.GetScreenAsync` for them instead of querying their tables. Entities refer to other domains only by id (`Booking.ScreeningId`, `Booking.RowId`, `Screening.ScreenId`), never through navigation properties.
+
+A single service with one database is enough for this size: a booking is saved in one transaction and there is nothing to keep in sync. To split it into separate services:
+
+- Each domain gets its own service and database, and the foreign keys between domains (bookings to screenings and rows, screenings to screens) go away.
+- Booking keeps its own copy of screening dates and screen rows, updated by events from the other two services, such as a screening scheduled or the rows of a screen changed. Bookings then keep working when the other services are down. The simpler alternative is calling them at booking time, behind the same two methods used today.
+- Programming checks that the screen of a new screening exists, from its own copy of the screens or by asking Venue.
+- Deleting a screen or a movie now removes its screenings and bookings through cascade deletes in the database. Across services this becomes an event, such as a screening cancelled, that Booking handles by cancelling its bookings.
+
 ## Running locally
 
 Requirements: .NET 10 SDK and Docker.
@@ -99,3 +118,4 @@ Docker must be running: the integration tests start their own PostgreSQL contain
 - Login and user management. Outside Development the API only accepts bearer tokens, but no endpoint issues them yet.
 - Managing roles: the admin role only comes from the mock token.
 - Admins cancelling bookings of other users.
+- Multiple cinemas: the API manages a single cinema. Supporting more would add a `Cinema` to the venue domain owning its screens, with screenings and bookings reaching it through their screen.
