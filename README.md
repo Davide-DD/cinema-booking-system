@@ -84,7 +84,7 @@ In Swagger UI, press **Authorize** and type only the token (`1` or `1:Admin`).
 | `GET` | `/bookings?screeningId=1&rowId=1&seatNumber=5` | Any user | Tells whether a seat is still free |
 | `DELETE` | `/bookings/{id}` | Booking owner | Cancels a booking of an upcoming screening |
 
-Updating a movie or a screen replaces its screenings or rows with the ones in the body: the ones left out are deleted. New or rescheduled screenings must be in the future, while past screenings can stay in the body unchanged.
+Updating a movie or a screen replaces its screenings or rows with the ones in the body: the ones left out are deleted. New or rescheduled screenings must be in the future, while past screenings can stay in the body unchanged. Screening dates must include a time zone (`Z` or an offset like `+01:00`) and are stored in UTC.
 
 Lists are ordered by id. A `page` lower than 1 is treated as 1 and `pageSize` is kept between 1 and 100.
 

@@ -94,6 +94,58 @@ public class MovieTests(CinemaBookingSystemFixture cinemaBookingSystemFixture) :
     }
 
     [Fact]
+    public async Task CreateOrUpdateMovie_InputScreeningDateWithOffset_SavesUtcDate()
+    {
+        using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient(asAdmin: true);
+        // A local date is sent with its offset, like 2026-11-03T20:00:00+01:00
+        DateTime localDateTime = DateTime.Today.AddDays(5).AddHours(20);
+        Movie movie = new Movie
+        {
+            Name = "Dune",
+            Screenings = new List<Screening>
+            {
+                new Screening
+                {
+                    ScreenId = 1,
+                    DateTime = localDateTime
+                }
+            }
+        };
+
+        using HttpResponseMessage response = await client.PutAsJsonAsync("/movies", movie);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Movie? responseMovie = await response.Content.ReadFromJsonAsync<Movie>();
+        Assert.NotNull(responseMovie);
+        Movie? createdMovie = await CommonGetMovie(responseMovie.Id);
+        Assert.NotNull(createdMovie);
+        Assert.Equal(localDateTime.ToUniversalTime(), createdMovie.Screenings.Single().DateTime);
+    }
+
+    [Fact]
+    public async Task CreateOrUpdateMovie_InputScreeningDateWithoutTimeZone_ReturnsBadRequest()
+    {
+        using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient(asAdmin: true);
+        Movie movie = new Movie
+        {
+            Name = "Dune",
+            Screenings = new List<Screening>
+            {
+                new Screening
+                {
+                    ScreenId = 1,
+                    DateTime = DateTime.SpecifyKind(DateTime.Today.AddDays(5).AddHours(20),
+                        DateTimeKind.Unspecified)
+                }
+            }
+        };
+
+        using HttpResponseMessage response = await client.PutAsJsonAsync("/movies", movie);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
     public async Task CreateOrUpdateMovie_InputExistingMovieWithNewName_UpdatesName()
     {
         using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient(asAdmin: true);

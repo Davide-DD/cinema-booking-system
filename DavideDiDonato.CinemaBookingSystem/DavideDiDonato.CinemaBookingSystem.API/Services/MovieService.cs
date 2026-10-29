@@ -41,10 +41,14 @@ public class MovieService(CinemaBookingSystemDbContext dbContext): IMovieService
         if (existingMovie == null && movie.Id != 0) throw new CinemaBookingSystemApiException(HttpStatusCode.NotFound, "Movie doesn't exist");
         foreach (Screening screening in movie.Screenings)
         {
-            if (screening.DateTime.ToUniversalTime() > DateTime.UtcNow) continue;
+            if (screening.DateTime.Kind == DateTimeKind.Unspecified)
+                throw new CinemaBookingSystemApiException(HttpStatusCode.BadRequest,
+                    "Screening dates must include a time zone");
+            // The database only accepts UTC dates
+            screening.DateTime = screening.DateTime.ToUniversalTime();
+            if (screening.DateTime > DateTime.UtcNow) continue;
             Screening? existingScreening = existingMovie?.Screenings.FirstOrDefault(e => e.Id == screening.Id);
-            if (existingScreening == null ||
-                existingScreening.DateTime.ToUniversalTime() != screening.DateTime.ToUniversalTime())
+            if (existingScreening == null || existingScreening.DateTime != screening.DateTime)
                 throw new CinemaBookingSystemApiException(HttpStatusCode.BadRequest,
                     "New or rescheduled screenings must be in the future");
         }
