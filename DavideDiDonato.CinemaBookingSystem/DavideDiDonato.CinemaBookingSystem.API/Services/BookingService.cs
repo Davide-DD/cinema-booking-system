@@ -114,16 +114,17 @@ public class BookingService(CinemaBookingSystemDbContext dbContext) : IBookingSe
     private Seat? FindFirstBestSeat(Row actualRow, List<Row> orderedRows, int rowIndex,
         Dictionary<int, HashSet<int>> bookedSeatsByRow)
     {
-        var seatRightSearchIndex = actualRow.Seats / 2;
+        var seatRightSearchIndex = (actualRow.Seats + 1) / 2;
         var seatLeftSearchIndex = seatRightSearchIndex;
 
-        while (seatRightSearchIndex <= orderedRows[rowIndex].Seats &&
+        while (seatRightSearchIndex <= actualRow.Seats ||
                seatLeftSearchIndex >= 1)
         {
-            if (!bookedSeatsByRow.ContainsKey(actualRow.Id) ||
-                !bookedSeatsByRow[actualRow.Id].Contains(seatRightSearchIndex))
+            if (seatRightSearchIndex <= actualRow.Seats &&
+                (!bookedSeatsByRow.ContainsKey(actualRow.Id) ||
+                 !bookedSeatsByRow[actualRow.Id].Contains(seatRightSearchIndex)))
             {
-                return new Seat(actualRow.Id, seatRightSearchIndex, orderedRows.Count, rowIndex, actualRow.Seats);
+                return new Seat(actualRow.Id, seatRightSearchIndex, orderedRows.Count, rowIndex + 1, actualRow.Seats);
             }
 
             if (seatRightSearchIndex == seatLeftSearchIndex)
@@ -133,10 +134,11 @@ public class BookingService(CinemaBookingSystemDbContext dbContext) : IBookingSe
                 continue;
             }
 
-            if (!bookedSeatsByRow.ContainsKey(actualRow.Id) ||
-                !bookedSeatsByRow[actualRow.Id].Contains(seatLeftSearchIndex))
+            if (seatLeftSearchIndex >= 1 &&
+                (!bookedSeatsByRow.ContainsKey(actualRow.Id) ||
+                 !bookedSeatsByRow[actualRow.Id].Contains(seatLeftSearchIndex)))
             {
-                return new Seat(actualRow.Id, seatLeftSearchIndex, orderedRows.Count, rowIndex, actualRow.Seats);
+                return new Seat(actualRow.Id, seatLeftSearchIndex, orderedRows.Count, rowIndex + 1, actualRow.Seats);
             }
 
             seatRightSearchIndex++;

@@ -51,6 +51,56 @@ public class BookingTests(CinemaBookingSystemFixture cinemaBookingSystemFixture)
     }
 
     [Fact]
+    public async Task BookScreenings_InputNoRowAndSeatWithOddSeats_ReturnsCentralSeat()
+    {
+        using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient();
+
+        Booking[] bookings = await CommonBookScreenings(client, new BookingRequest
+        {
+            ScreeningId = 3
+        });
+
+        // Screening 3 is in screen 2, whose central row 5 has 5 seats
+        Booking booking = Assert.Single(bookings);
+        Assert.Equal(5, booking.RowId);
+        Assert.Equal(3, booking.SeatNumber);
+    }
+
+    [Fact]
+    public async Task BookScreenings_InputNoRowAndSeatWithOnlyLastSeatFree_ReturnsLastSeat()
+    {
+        using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient();
+        Screen screen = await CommonAdd(new Screen
+        {
+            Number = 3,
+            Rows = new List<Row>
+            {
+                new Row
+                {
+                    Number = 1,
+                    Seats = 2
+                }
+            }
+        });
+        Screening screening = await CommonAdd(new Screening
+        {
+            ScreenId = screen.Id,
+            MovieId = 1,
+            DateTime = DateTime.UtcNow.AddDays(1)
+        });
+        Row row = screen.Rows.Single();
+        await CommonBookSeat(client, screening.Id, row.Id, seatNumber: 1);
+
+        Booking[] bookings = await CommonBookScreenings(client, new BookingRequest
+        {
+            ScreeningId = screening.Id
+        });
+
+        Booking booking = Assert.Single(bookings);
+        Assert.Equal(2, booking.SeatNumber);
+    }
+
+    [Fact]
     public async Task BookScreenings_InputNoRowAndSeatWithFullCentralRow_ReturnsSeatInAnotherRow()
     {
         using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient();
