@@ -288,6 +288,23 @@ public class ScreenTests(CinemaBookingSystemFixture cinemaBookingSystemFixture) 
     }
 
     [Fact]
+    public async Task CreateOrUpdateScreen_InputRowWithTooManySeats_ReturnsBadRequest()
+    {
+        using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient(asAdmin: true);
+        Screen screen = (await CommonGetScreen(1))!;
+        screen.Rows.Add(new Row
+        {
+            Number = 4,
+            Seats = 101,
+            ScreenId = 1
+        });
+
+        using HttpResponseMessage response = await client.PutAsJsonAsync("/screens/1", screen);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
     public async Task CreateOrUpdateScreen_InputNullRows_ReturnsBadRequest()
     {
         using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient(asAdmin: true);

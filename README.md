@@ -106,7 +106,7 @@ Errors are returned as [problem details](https://www.rfc-editor.org/rfc/rfc9457)
 
 ## Booking rules
 
-- Every booking request has a `screeningId` and either both `rowId` and `seatNumber` or neither of them. Seats are numbered from 1 in each row.
+- Every booking request has a `screeningId` and either both `rowId` and `seatNumber` or neither of them. Seats are numbered from 1 in each row, and a row has from 1 to 100 seats.
 - A request books from 1 to 10 seats, and it is all or nothing: if one of them can't be confirmed, none is saved.
 - Past screenings can't be booked or cancelled.
 - A seat already taken returns `409 Conflict`.
