@@ -2,6 +2,7 @@ using System.Net;
 using System.Security.Claims;
 using DavideDiDonato.CinemaBookingSystem.API.Contracts;
 using DavideDiDonato.CinemaBookingSystem.API.Exceptions;
+using DavideDiDonato.CinemaBookingSystem.API.Extensions;
 using DavideDiDonato.CinemaBookingSystem.Domain;
 using DavideDiDonato.CinemaBookingSystem.Infrastructure.Database;
 using Microsoft.EntityFrameworkCore;
@@ -30,11 +31,8 @@ public class BookingService(CinemaBookingSystemDbContext dbContext, IMovieServic
                      .GroupBy(bookingRequest => bookingRequest.ScreeningId))
         {
             int screeningId = screeningBookingRequests.Key;
-            Dictionary<int, HashSet<int>> bookedSeatsByRow = await dbContext.Bookings
-                .Where(booking => booking.ScreeningId == screeningId)
-                .GroupBy(booking => booking.RowId)
-                .ToDictionaryAsync(group => group.Key, group => group.Select(booking => booking.SeatNumber).ToHashSet(),
-                    cancellationToken);
+            Dictionary<int, HashSet<int>> bookedSeatsByRow =
+                await GetBookedSeatsByRowAsync(screeningId, cancellationToken);
             foreach (BookingRequest bookingRequest in screeningBookingRequests)
             {
                 if ((bookingRequest.RowId == null && bookingRequest.SeatNumber != null) ||
@@ -131,6 +129,18 @@ public class BookingService(CinemaBookingSystemDbContext dbContext, IMovieServic
         return bookings;
     }
 
+    private async Task<Dictionary<int, HashSet<int>>> GetBookedSeatsByRowAsync(int screeningId,
+        CancellationToken cancellationToken)
+    {
+        Dictionary<int, HashSet<int>> result = await dbContext.Bookings
+            .Where(booking => booking.ScreeningId == screeningId)
+            .GroupBy(booking => booking.RowId)
+            .ToDictionaryAsync(group => group.Key, group => group.Select(booking => booking.SeatNumber).ToHashSet(),
+                cancellationToken);
+
+        return result;
+    }
+
     private Seat? FindFirstBestSeat(Row actualRow, List<Row> orderedRows, int rowIndex,
         Dictionary<int, HashSet<int>> bookedSeatsByRow)
     {
@@ -224,5 +234,34 @@ public class BookingService(CinemaBookingSystemDbContext dbContext, IMovieServic
         };
         await GetBookingScreenAsync(booking, cancellationToken);
         return true;
+    }
+
+    public async Task<Booking[]> GetBookingsAsync(ClaimsPrincipal currentUser, int page, int pageSize,
+        CancellationToken cancellationToken)
+    {
+        int currentUserId = int.Parse(currentUser.FindFirst(e => e.Type == ClaimTypes.NameIdentifier)!.Value);
+        return await dbContext.Bookings.Where(e => e.UserId == currentUserId)
+            .OrderBy(e => e.Id)
+            .Paginate(page, pageSize)
+            .ToArrayAsync(cancellationToken);
+    }
+
+    public async Task<RowAvailability[]> GetScreeningSeatsAsync(int screeningId, CancellationToken cancellationToken)
+    {
+        Screen screen = await GetBookingScreenAsync(new Booking
+        {
+            ScreeningId = screeningId
+        }, cancellationToken, enforceValidity: false);
+        Dictionary<int, HashSet<int>> bookedSeatsByRow = await GetBookedSeatsByRowAsync(screeningId, cancellationToken);
+
+        return screen.Rows.OrderBy(e => e.Number)
+            .Select(e => new RowAvailability
+            {
+                RowId = e.Id,
+                Number = e.Number,
+                Seats = e.Seats,
+                BookedSeats = bookedSeatsByRow.GetValueOrDefault(e.Id, []).Order().ToArray()
+            })
+            .ToArray();
     }
 }

@@ -379,11 +379,26 @@ public class BookingTests(CinemaBookingSystemFixture cinemaBookingSystemFixture)
     }
 
     [Fact]
+    public async Task GetBookings_InputUserWithBookings_ReturnsOnlyUserBookings()
+    {
+        using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient(userId: 1);
+        using HttpClient anotherUserClient = cinemaBookingSystemFixture.CreateAuthenticatedClient(userId: 2);
+        Booking booking = await CommonBookSeat(client, screeningId: 1, rowId: 1, seatNumber: 5);
+        await CommonBookSeat(anotherUserClient, screeningId: 1, rowId: 1, seatNumber: 6);
+
+        Booking[]? bookings = await client.GetFromJsonAsync<Booking[]>("/bookings");
+
+        Assert.NotNull(bookings);
+        Booking userBooking = Assert.Single(bookings);
+        Assert.Equal(booking.Id, userBooking.Id);
+    }
+
+    [Fact]
     public async Task IsScreeningBookingAvailable_InputFreeSeat_ReturnsTrue()
     {
         using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient();
 
-        bool isAvailable = await client.GetFromJsonAsync<bool>("/bookings?screeningId=1&rowId=1&seatNumber=5");
+        bool isAvailable = await client.GetFromJsonAsync<bool>("/bookings/availability?screeningId=1&rowId=1&seatNumber=5");
 
         Assert.True(isAvailable);
     }
@@ -394,7 +409,7 @@ public class BookingTests(CinemaBookingSystemFixture cinemaBookingSystemFixture)
         using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient();
         await CommonBookSeat(client, screeningId: 1, rowId: 1, seatNumber: 5);
 
-        bool isAvailable = await client.GetFromJsonAsync<bool>("/bookings?screeningId=1&rowId=1&seatNumber=5");
+        bool isAvailable = await client.GetFromJsonAsync<bool>("/bookings/availability?screeningId=1&rowId=1&seatNumber=5");
 
         Assert.False(isAvailable);
     }
@@ -404,7 +419,7 @@ public class BookingTests(CinemaBookingSystemFixture cinemaBookingSystemFixture)
     {
         using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient();
 
-        using HttpResponseMessage response = await client.GetAsync("/bookings?screeningId=1&rowId=1&seatNumber=11");
+        using HttpResponseMessage response = await client.GetAsync("/bookings/availability?screeningId=1&rowId=1&seatNumber=11");
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
@@ -414,7 +429,32 @@ public class BookingTests(CinemaBookingSystemFixture cinemaBookingSystemFixture)
     {
         using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient();
 
-        using HttpResponseMessage response = await client.GetAsync("/bookings?screeningId=1&rowId=1&seatNumber=0");
+        using HttpResponseMessage response = await client.GetAsync("/bookings/availability?screeningId=1&rowId=1&seatNumber=0");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetScreeningSeats_InputScreeningWithBooking_ReturnsRowsWithBookedSeat()
+    {
+        using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient();
+        await CommonBookSeat(client, screeningId: 1, rowId: 1, seatNumber: 5);
+
+        RowAvailability[]? rows = await client.GetFromJsonAsync<RowAvailability[]>("/bookings/seats?screeningId=1");
+
+        // Screening 1 is in screen 1: three rows of 10 seats
+        Assert.NotNull(rows);
+        Assert.Equal(3, rows.Length);
+        Assert.Equal(new[] { 5 }, rows.Single(row => row.RowId == 1).BookedSeats);
+        Assert.All(rows.Where(row => row.RowId != 1), row => Assert.Empty(row.BookedSeats));
+    }
+
+    [Fact]
+    public async Task GetScreeningSeats_InputNotExistingScreening_ReturnsBadRequest()
+    {
+        using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient();
+
+        using HttpResponseMessage response = await client.GetAsync("/bookings/seats?screeningId=99");
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
@@ -428,7 +468,7 @@ public class BookingTests(CinemaBookingSystemFixture cinemaBookingSystemFixture)
         using HttpResponseMessage response = await client.DeleteAsync($"/bookings/{booking.Id}");
 
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
-        Assert.True(await client.GetFromJsonAsync<bool>("/bookings?screeningId=1&rowId=1&seatNumber=5"));
+        Assert.True(await client.GetFromJsonAsync<bool>("/bookings/availability?screeningId=1&rowId=1&seatNumber=5"));
     }
 
     [Fact]

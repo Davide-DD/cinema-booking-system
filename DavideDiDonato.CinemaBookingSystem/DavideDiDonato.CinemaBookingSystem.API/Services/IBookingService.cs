@@ -9,4 +9,6 @@ public interface IBookingService
     public Task<List<Booking>> BookScreeningsAsync(ClaimsPrincipal currentUser, BookingRequest[] bookingRequests, CancellationToken cancellationToken);
     public Task DeleteBookingAsync(ClaimsPrincipal currentUser, int id, CancellationToken cancellationToken);
     public Task<bool> IsScreeningBookingAvailableAsync(int screeningId, int rowId, int seatNumber, CancellationToken cancellationToken);
+    public Task<Booking[]> GetBookingsAsync(ClaimsPrincipal currentUser, int page, int pageSize, CancellationToken cancellationToken);
+    public Task<RowAvailability[]> GetScreeningSeatsAsync(int screeningId, CancellationToken cancellationToken);
 }
