@@ -4,6 +4,18 @@ REST API to manage movies, screens and screenings of a cinema and to book seats,
 
 Built with .NET 10 minimal APIs, Entity Framework Core on PostgreSQL, xUnit and Testcontainers.
 
+## Quick start
+
+With Docker running:
+
+```bash
+docker compose up --build
+```
+
+Open Swagger UI at http://localhost:8080/swagger, press **Authorize** and type `1` to act as a customer or `1:Admin` to act as an admin. The database starts with two screens, two movies and four upcoming screenings, and it is reset every time the API starts.
+
+The design choices are explained in [Domains](#domains), the booking rules in [Booking rules](#booking-rules) and what is left out in [Out of scope for now](#out-of-scope-for-now).
+
 ## Projects
 
 | Project | Content |
