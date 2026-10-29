@@ -69,6 +69,10 @@ public class ScreenService(CinemaBookingSystemDbContext dbContext, IBookedSeatSe
             foreach (Row row in existingScreen!.Rows)
             {
                 Row? modifiedRow = screen.Rows.FirstOrDefault(e => e.Id == row.Id);
+                if (modifiedRow == null &&
+                    await bookedSeatService.GetHighestBookedSeatNumberAsync(row.Id, cancellationToken) != null)
+                    throw new CinemaBookingSystemApiException(HttpStatusCode.Conflict,
+                        "The row has bookings and can't be removed");
                 if (modifiedRow == null) dbContext.Rows.Remove(row);
                 else dbContext.Rows.Entry(row).CurrentValues.SetValues(modifiedRow);
             }

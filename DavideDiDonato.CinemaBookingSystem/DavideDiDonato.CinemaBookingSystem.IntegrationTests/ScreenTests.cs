@@ -141,6 +141,22 @@ public class ScreenTests(CinemaBookingSystemFixture cinemaBookingSystemFixture) 
     }
 
     [Fact]
+    public async Task CreateOrUpdateScreen_InputExistingScreenWithoutBookedRow_ReturnsConflict()
+    {
+        using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient(asAdmin: true);
+        await CommonAddBooking(screeningId: 1, rowId: 3, seatNumber: 5);
+        Screen screen = (await CommonGetScreen(1))!;
+        screen.Rows.Remove(screen.Rows.Single(row => row.Id == 3));
+
+        using HttpResponseMessage response = await client.PutAsJsonAsync("/screens/1", screen);
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        Screen? notUpdatedScreen = await CommonGetScreen(1);
+        Assert.NotNull(notUpdatedScreen);
+        Assert.Contains(notUpdatedScreen.Rows, row => row.Id == 3);
+    }
+
+    [Fact]
     public async Task CreateOrUpdateScreen_InputExistingScreenWithNewRow_AddsRow()
     {
         using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient(asAdmin: true);

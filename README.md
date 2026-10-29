@@ -98,7 +98,7 @@ In Swagger UI, press **Authorize** and type only the token (`1` or `1:Admin`).
 
 Updating a movie or a screen replaces its screenings or rows with the ones in the body: the ones left out are deleted. New or rescheduled screenings must be in the future, while past screenings can stay in the body unchanged. Screening dates must include a time zone (`Z` or an offset like `+01:00`) and are stored in UTC.
 
-Mistakes can be corrected freely until they affect bookings. Moving a screening with bookings to another screen, or lowering the seats of a row below a booked seat, returns `409 Conflict` instead of leaving bookings on seats that don't exist: the customers holding them need a decision, not a silent change. Deleting the screening and creating it again cancels its bookings.
+Mistakes can be corrected freely until they affect bookings. Moving a screening with bookings to another screen, removing a row with bookings or lowering the seats of a row below a booked seat returns `409 Conflict` instead of cancelling those bookings or leaving them on seats that don't exist: the customers holding them need a decision, not a silent change. Deleting the screening and creating it again cancels its bookings.
 
 Lists are ordered by id. `page` defaults to 1 and `pageSize` to 10. A `page` lower than 1 is treated as 1, a page past the end returns an empty list and `pageSize` is kept between 1 and 100.
 
