@@ -27,6 +27,7 @@ public class CinemaBookingSystemDbContext(DbContextOptions options) : DbContext(
             e.HasKey(screen => screen.Id);
 
             e.HasMany(screen => screen.Rows).WithOne().HasForeignKey(row => row.ScreenId);
+            e.HasMany<Screening>().WithOne().HasForeignKey(screening => screening.ScreenId);
         });
         
         modelBuilder.Entity<Row>(e =>

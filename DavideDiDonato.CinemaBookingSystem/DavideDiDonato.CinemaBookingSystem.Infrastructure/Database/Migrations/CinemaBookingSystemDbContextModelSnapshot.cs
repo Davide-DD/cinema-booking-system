@@ -130,6 +130,8 @@ namespace DavideDiDonato.CinemaBookingSystem.Infrastructure.Database.Migrations
 
                     b.HasIndex("MovieId");
 
+                    b.HasIndex("ScreenId");
+
                     b.ToTable("Screenings");
                 });
 
@@ -162,6 +164,12 @@ namespace DavideDiDonato.CinemaBookingSystem.Infrastructure.Database.Migrations
                     b.HasOne("DavideDiDonato.CinemaBookingSystem.Domain.Movie", null)
                         .WithMany("Screenings")
                         .HasForeignKey("MovieId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("DavideDiDonato.CinemaBookingSystem.Domain.Screen", null)
+                        .WithMany()
+                        .HasForeignKey("ScreenId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
