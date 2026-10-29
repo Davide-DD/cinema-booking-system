@@ -1,0 +1,25 @@
+# Runs the API in Development, with mock authentication and sample data, next to its own PostgreSQL
+services:
+  db:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: cinema_booking_system
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d cinema_booking_system"]
+      interval: 2s
+      timeout: 5s
+      retries: 15
+
+  api:
+    build:
+      context: DavideDiDonato.CinemaBookingSystem
+      dockerfile: DavideDiDonato.CinemaBookingSystem.API/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__DatabaseConnectionString: Host=db;Port=5432;Database=cinema_booking_system;Username=postgres;Password=postgres;GSS Encryption Mode=Disable
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy

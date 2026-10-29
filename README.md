@@ -59,6 +59,16 @@ Requirements: .NET 10 SDK and Docker.
 
 In Development the API applies the migrations and **resets the database on every start**, then seeds two screens, two movies and four upcoming screenings. Never point the Development environment to a database you want to keep.
 
+## Running with Docker
+
+```bash
+docker compose up --build
+```
+
+`docker-compose.yml` builds the API image and runs it in Development next to its own PostgreSQL, so mock authentication and the sample data work as described above. Swagger UI is at http://localhost:8080/swagger. As in Development, the database is reset every time the API starts.
+
+The image published by the CI runs in Production: there the API doesn't apply migrations, seed data or accept mock tokens. In a real deployment the pipeline would apply the migrations before starting the new version, for example with an EF Core migration bundle (`dotnet ef migrations bundle`), so that several instances never migrate the database at the same time.
+
 ## Authentication
 
 In Development the API uses a mock authentication scheme, enabled by `MockAuthentication` in `appsettings.Development.json`. The bearer token is the numeric user id, optionally followed by a role:
