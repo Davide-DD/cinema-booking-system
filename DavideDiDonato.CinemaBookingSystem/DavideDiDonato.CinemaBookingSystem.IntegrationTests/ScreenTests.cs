@@ -1,5 +1,6 @@
 ﻿using System.Net;
 using System.Net.Http.Json;
+using System.Text;
 using DavideDiDonato.CinemaBookingSystem.Domain;
 using DavideDiDonato.CinemaBookingSystem.Infrastructure.Database;
 using Microsoft.EntityFrameworkCore;
@@ -282,6 +283,30 @@ public class ScreenTests(CinemaBookingSystemFixture cinemaBookingSystemFixture) 
         });
 
         using HttpResponseMessage response = await client.PutAsJsonAsync("/screens/1", screen);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task CreateOrUpdateScreen_InputNullRows_ReturnsBadRequest()
+    {
+        using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient(asAdmin: true);
+        using StringContent content = new StringContent("{\"number\":3,\"rows\":null}", Encoding.UTF8,
+            "application/json");
+
+        using HttpResponseMessage response = await client.PutAsync("/screens", content);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task CreateOrUpdateScreen_InputNullRow_ReturnsBadRequest()
+    {
+        using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient(asAdmin: true);
+        using StringContent content = new StringContent("{\"number\":3,\"rows\":[null]}", Encoding.UTF8,
+            "application/json");
+
+        using HttpResponseMessage response = await client.PutAsync("/screens", content);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }

@@ -39,6 +39,9 @@ public class ScreenService(CinemaBookingSystemDbContext dbContext, IBookedSeatSe
     public async Task<Screen> CreateOrUpdateScreenAsync(int? id, Screen screen, CancellationToken cancellationToken)
     {
         if (id != null && id != screen.Id) throw new CinemaBookingSystemApiException(HttpStatusCode.BadRequest, "Screen id mismatch");
+        // The body can still send null where the model doesn't allow it
+        if (screen.Rows == null || screen.Rows.Any(e => e == null))
+            throw new CinemaBookingSystemApiException(HttpStatusCode.BadRequest, "Rows can't be null");
         Screen? existingScreen = await dbContext.Screens.Where(e => e.Id == screen.Id)
             .Include(e => e.Rows)
             .FirstOrDefaultAsync(cancellationToken);

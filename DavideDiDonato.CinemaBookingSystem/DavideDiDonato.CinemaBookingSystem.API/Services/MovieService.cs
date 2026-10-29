@@ -36,6 +36,9 @@ public class MovieService(CinemaBookingSystemDbContext dbContext, IScreenService
     public async Task<Movie> CreateOrUpdateMovieAsync(int? id, Movie movie, CancellationToken cancellationToken)
     {
         if (id != null && id != movie.Id) throw new CinemaBookingSystemApiException(HttpStatusCode.BadRequest, "Movie id mismatch");
+        // The body can still send null where the model doesn't allow it
+        if (movie.Screenings == null || movie.Screenings.Any(e => e == null))
+            throw new CinemaBookingSystemApiException(HttpStatusCode.BadRequest, "Screenings can't be null");
         Movie? existingMovie = await dbContext.Movies.Where(e => e.Id == movie.Id)
             .Include(e => e.Screenings)
             .FirstOrDefaultAsync(cancellationToken);

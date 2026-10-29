@@ -1,5 +1,6 @@
 ﻿using System.Net;
 using System.Net.Http.Json;
+using System.Text;
 using DavideDiDonato.CinemaBookingSystem.Domain;
 using DavideDiDonato.CinemaBookingSystem.Infrastructure.Database;
 using Microsoft.EntityFrameworkCore;
@@ -345,6 +346,55 @@ public class MovieTests(CinemaBookingSystemFixture cinemaBookingSystemFixture) :
         };
 
         using HttpResponseMessage response = await client.PutAsJsonAsync("/movies", movie);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task CreateOrUpdateMovie_InputBlankName_ReturnsBadRequest()
+    {
+        using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient(asAdmin: true);
+        Movie movie = new Movie
+        {
+            Name = "   "
+        };
+
+        using HttpResponseMessage response = await client.PutAsJsonAsync("/movies", movie);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task CreateOrUpdateMovie_InputNullName_ReturnsBadRequest()
+    {
+        using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient(asAdmin: true);
+        using StringContent content = new StringContent("{\"name\":null}", Encoding.UTF8, "application/json");
+
+        using HttpResponseMessage response = await client.PutAsync("/movies", content);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task CreateOrUpdateMovie_InputNullScreenings_ReturnsBadRequest()
+    {
+        using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient(asAdmin: true);
+        using StringContent content = new StringContent("{\"name\":\"Dune\",\"screenings\":null}", Encoding.UTF8,
+            "application/json");
+
+        using HttpResponseMessage response = await client.PutAsync("/movies", content);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task CreateOrUpdateMovie_InputNullScreening_ReturnsBadRequest()
+    {
+        using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient(asAdmin: true);
+        using StringContent content = new StringContent("{\"name\":\"Dune\",\"screenings\":[null]}", Encoding.UTF8,
+            "application/json");
+
+        using HttpResponseMessage response = await client.PutAsync("/movies", content);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }

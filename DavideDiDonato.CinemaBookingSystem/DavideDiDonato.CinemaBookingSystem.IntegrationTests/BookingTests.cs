@@ -342,6 +342,28 @@ public class BookingTests(CinemaBookingSystemFixture cinemaBookingSystemFixture)
     }
 
     [Fact]
+    public async Task BookScreenings_InputNullBookingRequest_ReturnsBadRequest()
+    {
+        using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient();
+        using StringContent content = new StringContent("[null]", Encoding.UTF8, "application/json");
+
+        using HttpResponseMessage response = await client.PostAsync("/bookings", content);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task BookScreenings_InputNullBody_ReturnsBadRequest()
+    {
+        using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient();
+        using StringContent content = new StringContent("null", Encoding.UTF8, "application/json");
+
+        using HttpResponseMessage response = await client.PostAsync("/bookings", content);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
     public async Task BookScreenings_InputNotExistingSeat_ReturnsBadRequest()
     {
         using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient();

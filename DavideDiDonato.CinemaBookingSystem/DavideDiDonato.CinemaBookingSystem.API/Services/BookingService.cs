@@ -17,6 +17,9 @@ public class BookingService(CinemaBookingSystemDbContext dbContext, IMovieServic
     public async Task<List<Booking>> BookScreeningsAsync(ClaimsPrincipal currentUser, BookingRequest[] bookingRequests,
         CancellationToken cancellationToken)
     {
+        // The body can still send null where the model doesn't allow it
+        if (bookingRequests.Any(e => e == null))
+            throw new CinemaBookingSystemApiException(HttpStatusCode.BadRequest, "Booking requests can't be null");
         int currentUserId = int.Parse(currentUser.FindFirst(e => e.Type == ClaimTypes.NameIdentifier)!.Value);
         await using IDbContextTransaction transaction =
             await dbContext.Database.BeginTransactionAsync(cancellationToken);
