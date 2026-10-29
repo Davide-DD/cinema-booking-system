@@ -61,7 +61,7 @@ In Development the API applies the migrations and **resets the database on every
 
 ## Authentication
 
-In Development the API uses a mock authentication scheme, enabled by `MockAuthentication` in `appsettings.Development.json`. The bearer token is the user id, optionally followed by a role:
+In Development the API uses a mock authentication scheme, enabled by `MockAuthentication` in `appsettings.Development.json`. The bearer token is the numeric user id, optionally followed by a role:
 
 | Header | User |
 |---|---|

@@ -1,4 +1,5 @@
 ﻿using System.Net;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
 using DavideDiDonato.CinemaBookingSystem.API.Contracts;
@@ -360,6 +361,17 @@ public class BookingTests(CinemaBookingSystemFixture cinemaBookingSystemFixture)
     public async Task BookScreenings_InputNoAuthentication_ReturnsUnauthorized()
     {
         using HttpClient client = cinemaBookingSystemFixture.WebApplicationFactory.CreateClient();
+
+        using HttpResponseMessage response = await CommonPostBooking(client, screeningId: 1, rowId: 1, seatNumber: 1);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task BookScreenings_InputNotNumericUserId_ReturnsUnauthorized()
+    {
+        using HttpClient client = cinemaBookingSystemFixture.WebApplicationFactory.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", "abc");
 
         using HttpResponseMessage response = await CommonPostBooking(client, screeningId: 1, rowId: 1, seatNumber: 1);
 

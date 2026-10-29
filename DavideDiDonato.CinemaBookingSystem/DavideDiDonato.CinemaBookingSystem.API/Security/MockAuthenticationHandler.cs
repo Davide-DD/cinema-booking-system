@@ -23,7 +23,7 @@ public class MockAuthenticationHandler(
         
         string[] tokenParts = authorizationHeader.Substring(BearerPrefix.Length).Trim().Split(RoleSeparator);
         string userId = tokenParts[0];
-        if (userId.Length == 0) return Task.FromResult(AuthenticateResult.NoResult());
+        if (!int.TryParse(userId, out _)) return Task.FromResult(AuthenticateResult.NoResult());
 
         var claims = new List<Claim>()
         {
