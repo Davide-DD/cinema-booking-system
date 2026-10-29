@@ -41,6 +41,11 @@ public class MovieService(CinemaBookingSystemDbContext dbContext, IScreenService
         if (existingMovie == null && movie.Id != 0) throw new CinemaBookingSystemApiException(HttpStatusCode.NotFound, "Movie doesn't exist");
         foreach (Screening screening in movie.Screenings)
         {
+            if (screening.Id != 0 &&
+                (existingMovie == null || existingMovie.Screenings.All(e => e.Id != screening.Id)))
+                throw new CinemaBookingSystemApiException(HttpStatusCode.BadRequest,
+                    "The screening doesn't belong to the movie");
+            screening.MovieId = movie.Id;
             if (screening.DateTime.Kind == DateTimeKind.Unspecified)
                 throw new CinemaBookingSystemApiException(HttpStatusCode.BadRequest,
                     "Screening dates must include a time zone");

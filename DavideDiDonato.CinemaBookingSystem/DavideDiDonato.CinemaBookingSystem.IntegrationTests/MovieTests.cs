@@ -206,6 +206,41 @@ public class MovieTests(CinemaBookingSystemFixture cinemaBookingSystemFixture) :
     }
 
     [Fact]
+    public async Task CreateOrUpdateMovie_InputScreeningsWithAnotherMovieId_KeepsScreeningsInMovie()
+    {
+        using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient(asAdmin: true);
+        Movie movie = (await CommonGetMovie(1))!;
+        movie.Screenings.Single(screening => screening.Id == 1).MovieId = 2;
+        movie.Screenings.Add(new Screening
+        {
+            ScreenId = 1,
+            MovieId = 2,
+            DateTime = DateTime.UtcNow.AddDays(6)
+        });
+
+        using HttpResponseMessage response = await client.PutAsJsonAsync("/movies/1", movie);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Movie? updatedMovie = await CommonGetMovie(1);
+        Movie? anotherMovie = await CommonGetMovie(2);
+        Assert.Equal(3, updatedMovie?.Screenings.Count);
+        Assert.Equal(2, anotherMovie?.Screenings.Count);
+    }
+
+    [Fact]
+    public async Task CreateOrUpdateMovie_InputScreeningOfAnotherMovie_ReturnsBadRequest()
+    {
+        using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient(asAdmin: true);
+        Movie movie = (await CommonGetMovie(1))!;
+        Movie anotherMovie = (await CommonGetMovie(2))!;
+        movie.Screenings.Add(anotherMovie.Screenings.First());
+
+        using HttpResponseMessage response = await client.PutAsJsonAsync("/movies/1", movie);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
     public async Task CreateOrUpdateMovie_InputScreeningOnNotExistingScreen_ReturnsBadRequest()
     {
         using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient(asAdmin: true);

@@ -159,6 +159,41 @@ public class ScreenTests(CinemaBookingSystemFixture cinemaBookingSystemFixture) 
     }
 
     [Fact]
+    public async Task CreateOrUpdateScreen_InputRowsWithAnotherScreenId_KeepsRowsInScreen()
+    {
+        using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient(asAdmin: true);
+        Screen screen = (await CommonGetScreen(1))!;
+        screen.Rows.Single(row => row.Id == 1).ScreenId = 2;
+        screen.Rows.Add(new Row
+        {
+            Number = 4,
+            Seats = 10,
+            ScreenId = 2
+        });
+
+        using HttpResponseMessage response = await client.PutAsJsonAsync("/screens/1", screen);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Screen? updatedScreen = await CommonGetScreen(1);
+        Screen? anotherScreen = await CommonGetScreen(2);
+        Assert.Equal(4, updatedScreen?.Rows.Count);
+        Assert.Equal(3, anotherScreen?.Rows.Count);
+    }
+
+    [Fact]
+    public async Task CreateOrUpdateScreen_InputRowOfAnotherScreen_ReturnsBadRequest()
+    {
+        using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient(asAdmin: true);
+        Screen screen = (await CommonGetScreen(1))!;
+        Screen anotherScreen = (await CommonGetScreen(2))!;
+        screen.Rows.Add(anotherScreen.Rows.First());
+
+        using HttpResponseMessage response = await client.PutAsJsonAsync("/screens/1", screen);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
     public async Task CreateOrUpdateScreen_InputMismatchingId_ReturnsBadRequest()
     {
         using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient(asAdmin: true);

@@ -42,6 +42,13 @@ public class ScreenService(CinemaBookingSystemDbContext dbContext) : IScreenServ
             .Include(e => e.Rows)
             .FirstOrDefaultAsync(cancellationToken);
         if (existingScreen == null && screen.Id != 0) throw new CinemaBookingSystemApiException(HttpStatusCode.NotFound, "Screen doesn't exist");
+        foreach (Row row in screen.Rows)
+        {
+            if (row.Id != 0 && (existingScreen == null || existingScreen.Rows.All(e => e.Id != row.Id)))
+                throw new CinemaBookingSystemApiException(HttpStatusCode.BadRequest,
+                    "The row doesn't belong to the screen");
+            row.ScreenId = screen.Id;
+        }
         if (screen.Id == 0)
         {
             await dbContext.Screens.AddAsync(screen, cancellationToken);
