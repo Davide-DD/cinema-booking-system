@@ -148,14 +148,14 @@ public class ScreenTests(CinemaBookingSystemFixture cinemaBookingSystemFixture) 
     }
 
     [Fact]
-    public async Task CreateOrUpdateScreen_InputMismatchingId_ReturnsNotFound()
+    public async Task CreateOrUpdateScreen_InputMismatchingId_ReturnsBadRequest()
     {
         using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient(asAdmin: true);
         Screen screen = (await CommonGetScreen(1))!;
 
         using HttpResponseMessage response = await client.PutAsJsonAsync("/screens/2", screen);
 
-        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
     [Fact]

@@ -30,7 +30,7 @@ public class ScreenService(CinemaBookingSystemDbContext dbContext) : IScreenServ
 
     public async Task<Screen> CreateOrUpdateScreen(int? id, Screen screen, CancellationToken cancellationToken)
     {
-        if (id != null && id != screen.Id) throw new CinemaBookingSystemApiException(HttpStatusCode.NotFound, "Screen id mismatch");
+        if (id != null && id != screen.Id) throw new CinemaBookingSystemApiException(HttpStatusCode.BadRequest, "Screen id mismatch");
         Screen? existingScreen = await dbContext.Screens.Where(e => e.Id == screen.Id)
             .Include(e => e.Rows)
             .FirstOrDefaultAsync(cancellationToken);

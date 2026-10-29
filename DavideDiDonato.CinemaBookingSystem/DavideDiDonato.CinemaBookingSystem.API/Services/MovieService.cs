@@ -29,7 +29,7 @@ public class MovieService(CinemaBookingSystemDbContext dbContext): IMovieService
 
     public async Task<Movie> CreateOrUpdateMovie(int? id, Movie movie, CancellationToken cancellationToken)
     {
-        if (id != null && id != movie.Id) throw new CinemaBookingSystemApiException(HttpStatusCode.NotFound, "Movie id mismatch");
+        if (id != null && id != movie.Id) throw new CinemaBookingSystemApiException(HttpStatusCode.BadRequest, "Movie id mismatch");
         Movie? existingMovie = await dbContext.Movies.Where(e => e.Id == movie.Id)
             .Include(e => e.Screenings)
             .FirstOrDefaultAsync(cancellationToken);

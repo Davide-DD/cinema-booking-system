@@ -143,14 +143,14 @@ public class MovieTests(CinemaBookingSystemFixture cinemaBookingSystemFixture) :
     }
 
     [Fact]
-    public async Task CreateOrUpdateMovie_InputMismatchingId_ReturnsNotFound()
+    public async Task CreateOrUpdateMovie_InputMismatchingId_ReturnsBadRequest()
     {
         using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient(asAdmin: true);
         Movie movie = (await CommonGetMovie(1))!;
 
         using HttpResponseMessage response = await client.PutAsJsonAsync("/movies/2", movie);
 
-        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
     [Fact]
