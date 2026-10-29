@@ -12,6 +12,7 @@ public class MockAuthenticationHandler(
     : AuthenticationHandler<MockAuthenticationOptions>(options, logger, encoder)
 {
     private const string BearerPrefix = "Bearer ";
+    private const char RoleSeparator = ':';
 
     protected override Task<AuthenticateResult> HandleAuthenticateAsync()
     {
@@ -20,13 +21,15 @@ public class MockAuthenticationHandler(
             !authorizationHeader.StartsWith(BearerPrefix, StringComparison.OrdinalIgnoreCase))
             return Task.FromResult(AuthenticateResult.NoResult());
         
-        string userId = authorizationHeader.Substring(BearerPrefix.Length).Trim();
+        string[] tokenParts = authorizationHeader.Substring(BearerPrefix.Length).Trim().Split(RoleSeparator);
+        string userId = tokenParts[0];
         if (userId.Length == 0) return Task.FromResult(AuthenticateResult.NoResult());
-        
+
         var claims = new List<Claim>()
         {
             new Claim(ClaimTypes.NameIdentifier, userId)
         };
+        if (tokenParts.Length > 1) claims.Add(new Claim(ClaimTypes.Role, tokenParts[1]));
 
         var claimsIdentity = new ClaimsIdentity(claims, this.Scheme.Name);
         var claimsPrincipal = new ClaimsPrincipal(claimsIdentity);

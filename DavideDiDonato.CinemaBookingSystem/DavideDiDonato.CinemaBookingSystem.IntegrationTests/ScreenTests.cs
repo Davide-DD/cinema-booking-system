@@ -56,7 +56,7 @@ public class ScreenTests(CinemaBookingSystemFixture cinemaBookingSystemFixture) 
     [Fact]
     public async Task CreateOrUpdateScreen_InputNewScreen_ReturnsCreatedScreen()
     {
-        using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient();
+        using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient(asAdmin: true);
         Screen screen = new Screen
         {
             Number = 3,
@@ -89,7 +89,7 @@ public class ScreenTests(CinemaBookingSystemFixture cinemaBookingSystemFixture) 
     [Fact]
     public async Task CreateOrUpdateScreen_InputExistingScreenWithNewNumber_UpdatesNumber()
     {
-        using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient();
+        using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient(asAdmin: true);
         Screen screen = (await CommonGetScreen(1))!;
         screen.Number = 3;
 
@@ -103,7 +103,7 @@ public class ScreenTests(CinemaBookingSystemFixture cinemaBookingSystemFixture) 
     [Fact]
     public async Task CreateOrUpdateScreen_InputExistingScreenWithoutRow_RemovesRow()
     {
-        using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient();
+        using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient(asAdmin: true);
         Screen screen = (await CommonGetScreen(1))!;
         screen.Rows.Remove(screen.Rows.Single(row => row.Id == 3));
 
@@ -119,7 +119,7 @@ public class ScreenTests(CinemaBookingSystemFixture cinemaBookingSystemFixture) 
     [Fact]
     public async Task CreateOrUpdateScreen_InputExistingScreenWithNewRow_AddsRow()
     {
-        using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient();
+        using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient(asAdmin: true);
         Screen screen = (await CommonGetScreen(1))!;
         screen.Rows.Add(new Row
         {
@@ -138,7 +138,7 @@ public class ScreenTests(CinemaBookingSystemFixture cinemaBookingSystemFixture) 
     [Fact]
     public async Task CreateOrUpdateScreen_InputMismatchingId_ReturnsNotFound()
     {
-        using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient();
+        using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient(asAdmin: true);
         Screen screen = (await CommonGetScreen(1))!;
 
         using HttpResponseMessage response = await client.PutAsJsonAsync("/screens/2", screen);
@@ -149,7 +149,7 @@ public class ScreenTests(CinemaBookingSystemFixture cinemaBookingSystemFixture) 
     [Fact]
     public async Task CreateOrUpdateScreen_InputNotExistingId_ReturnsNotFound()
     {
-        using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient();
+        using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient(asAdmin: true);
         Screen screen = new Screen
         {
             Id = 99,
@@ -164,7 +164,7 @@ public class ScreenTests(CinemaBookingSystemFixture cinemaBookingSystemFixture) 
     [Fact]
     public async Task CreateOrUpdateScreen_InputRowWithoutSeats_ReturnsBadRequest()
     {
-        using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient();
+        using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient(asAdmin: true);
         Screen screen = (await CommonGetScreen(1))!;
         screen.Rows.Add(new Row
         {
@@ -179,9 +179,20 @@ public class ScreenTests(CinemaBookingSystemFixture cinemaBookingSystemFixture) 
     }
 
     [Fact]
-    public async Task DeleteScreen_InputExistingId_ReturnsNoContent()
+    public async Task CreateOrUpdateScreen_InputNoAdmin_ReturnsForbidden()
     {
         using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient();
+        Screen screen = (await CommonGetScreen(1))!;
+
+        using HttpResponseMessage response = await client.PutAsJsonAsync("/screens/1", screen);
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task DeleteScreen_InputExistingId_ReturnsNoContent()
+    {
+        using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient(asAdmin: true);
 
         using HttpResponseMessage response = await client.DeleteAsync("/screens/2");
 
@@ -192,11 +203,22 @@ public class ScreenTests(CinemaBookingSystemFixture cinemaBookingSystemFixture) 
     [Fact]
     public async Task DeleteScreen_InputNotExistingId_ReturnsNotFound()
     {
-        using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient();
+        using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient(asAdmin: true);
 
         using HttpResponseMessage response = await client.DeleteAsync("/screens/99");
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task DeleteScreen_InputNoAdmin_ReturnsForbidden()
+    {
+        using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient();
+
+        using HttpResponseMessage response = await client.DeleteAsync("/screens/2");
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        Assert.NotNull(await CommonGetScreen(2));
     }
 
     private async Task<Screen?> CommonGetScreen(int id)

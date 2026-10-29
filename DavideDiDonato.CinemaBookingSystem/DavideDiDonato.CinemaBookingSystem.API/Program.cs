@@ -56,7 +56,8 @@ builder.Services.AddAuthentication("Selector")
     .AddBearerToken();
 builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.NumberHandling = JsonNumberHandling.Strict);
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorizationBuilder()
+    .AddPolicy(Roles.Admin, policy => policy.RequireRole(Roles.Admin));
 builder.Services.AddEndpointsApiExplorer();
 
 var connectionString =

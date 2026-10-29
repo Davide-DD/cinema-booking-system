@@ -1,4 +1,5 @@
 using System.Net.Http.Headers;
+using DavideDiDonato.CinemaBookingSystem.API.Security;
 using DavideDiDonato.CinemaBookingSystem.Infrastructure.Database;
 using DavideDiDonato.CinemaBookingSystem.Infrastructure.Database.Seeder;
 using Microsoft.AspNetCore.Hosting;
@@ -37,10 +38,11 @@ public class CinemaBookingSystemFixture : IAsyncLifetime
         return result;
     }
 
-    public HttpClient CreateAuthenticatedClient(int userId = 1)
+    public HttpClient CreateAuthenticatedClient(int userId = 1, bool asAdmin = false)
     {
         HttpClient result = WebApplicationFactory.CreateClient();
-        result.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", userId.ToString());
+        string token = asAdmin ? $"{userId}:{Roles.Admin}" : userId.ToString();
+        result.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
         return result;
     }

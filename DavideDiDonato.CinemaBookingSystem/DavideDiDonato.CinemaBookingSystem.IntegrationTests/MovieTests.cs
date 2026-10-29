@@ -56,7 +56,7 @@ public class MovieTests(CinemaBookingSystemFixture cinemaBookingSystemFixture) :
     [Fact]
     public async Task CreateOrUpdateMovie_InputNewMovie_ReturnsCreatedMovie()
     {
-        using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient();
+        using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient(asAdmin: true);
         Movie movie = new Movie
         {
             Name = "Dune",
@@ -84,7 +84,7 @@ public class MovieTests(CinemaBookingSystemFixture cinemaBookingSystemFixture) :
     [Fact]
     public async Task CreateOrUpdateMovie_InputExistingMovieWithNewName_UpdatesName()
     {
-        using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient();
+        using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient(asAdmin: true);
         Movie movie = (await CommonGetMovie(1))!;
         movie.Name = "The Lord of the Rings";
 
@@ -98,7 +98,7 @@ public class MovieTests(CinemaBookingSystemFixture cinemaBookingSystemFixture) :
     [Fact]
     public async Task CreateOrUpdateMovie_InputExistingMovieWithoutScreening_RemovesScreening()
     {
-        using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient();
+        using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient(asAdmin: true);
         Movie movie = (await CommonGetMovie(1))!;
         movie.Screenings.Remove(movie.Screenings.Single(screening => screening.Id == 2));
 
@@ -114,7 +114,7 @@ public class MovieTests(CinemaBookingSystemFixture cinemaBookingSystemFixture) :
     [Fact]
     public async Task CreateOrUpdateMovie_InputExistingMovieWithNewScreening_AddsScreening()
     {
-        using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient();
+        using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient(asAdmin: true);
         Movie movie = (await CommonGetMovie(1))!;
         movie.Screenings.Add(new Screening
         {
@@ -133,7 +133,7 @@ public class MovieTests(CinemaBookingSystemFixture cinemaBookingSystemFixture) :
     [Fact]
     public async Task CreateOrUpdateMovie_InputMismatchingId_ReturnsNotFound()
     {
-        using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient();
+        using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient(asAdmin: true);
         Movie movie = (await CommonGetMovie(1))!;
 
         using HttpResponseMessage response = await client.PutAsJsonAsync("/movies/2", movie);
@@ -144,7 +144,7 @@ public class MovieTests(CinemaBookingSystemFixture cinemaBookingSystemFixture) :
     [Fact]
     public async Task CreateOrUpdateMovie_InputNotExistingId_ReturnsNotFound()
     {
-        using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient();
+        using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient(asAdmin: true);
         Movie movie = new Movie
         {
             Id = 99,
@@ -159,7 +159,7 @@ public class MovieTests(CinemaBookingSystemFixture cinemaBookingSystemFixture) :
     [Fact]
     public async Task CreateOrUpdateMovie_InputEmptyName_ReturnsBadRequest()
     {
-        using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient();
+        using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient(asAdmin: true);
         Movie movie = new Movie
         {
             Name = ""
@@ -173,7 +173,7 @@ public class MovieTests(CinemaBookingSystemFixture cinemaBookingSystemFixture) :
     [Fact]
     public async Task CreateOrUpdateMovie_InputPastScreening_ReturnsBadRequest()
     {
-        using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient();
+        using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient(asAdmin: true);
         Movie movie = (await CommonGetMovie(1))!;
         movie.Screenings.Add(new Screening
         {
@@ -188,9 +188,20 @@ public class MovieTests(CinemaBookingSystemFixture cinemaBookingSystemFixture) :
     }
 
     [Fact]
-    public async Task DeleteMovie_InputExistingId_ReturnsNoContent()
+    public async Task CreateOrUpdateMovie_InputNoAdmin_ReturnsForbidden()
     {
         using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient();
+        Movie movie = (await CommonGetMovie(1))!;
+
+        using HttpResponseMessage response = await client.PutAsJsonAsync("/movies/1", movie);
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task DeleteMovie_InputExistingId_ReturnsNoContent()
+    {
+        using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient(asAdmin: true);
 
         using HttpResponseMessage response = await client.DeleteAsync("/movies/2");
 
@@ -201,11 +212,22 @@ public class MovieTests(CinemaBookingSystemFixture cinemaBookingSystemFixture) :
     [Fact]
     public async Task DeleteMovie_InputNotExistingId_ReturnsNotFound()
     {
-        using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient();
+        using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient(asAdmin: true);
 
         using HttpResponseMessage response = await client.DeleteAsync("/movies/99");
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task DeleteMovie_InputNoAdmin_ReturnsForbidden()
+    {
+        using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient();
+
+        using HttpResponseMessage response = await client.DeleteAsync("/movies/2");
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        Assert.NotNull(await CommonGetMovie(2));
     }
 
     private async Task<Movie?> CommonGetMovie(int id)

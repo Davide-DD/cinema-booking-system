@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using DavideDiDonato.CinemaBookingSystem.API.Contracts;
+using DavideDiDonato.CinemaBookingSystem.API.Security;
 using DavideDiDonato.CinemaBookingSystem.API.Services;
 using DavideDiDonato.CinemaBookingSystem.Domain;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -15,9 +16,9 @@ public static class ScreenEndpoints
             .WithTags("Screens")
             .RequireAuthorization();
 
-        bookingGroup.MapPut("/{id:int?}", CreateOrUpdateScreen);
+        bookingGroup.MapPut("/{id:int?}", CreateOrUpdateScreen).RequireAuthorization(Roles.Admin);
         bookingGroup.MapGet("/", GetScreens);
-        bookingGroup.MapDelete("/{id:int}", DeleteScreen);
+        bookingGroup.MapDelete("/{id:int}", DeleteScreen).RequireAuthorization(Roles.Admin);
 
         return endpoints;
     }
