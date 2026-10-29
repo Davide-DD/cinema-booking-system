@@ -57,6 +57,12 @@ public class BookingService(CinemaBookingSystemDbContext dbContext, IMovieServic
                     int rowLowerSearchIndex = rowUpperSearchIndex;
                     while (rowUpperSearchIndex < bookingScreen.Rows.Count || rowLowerSearchIndex >= 0)
                     {
+                        // The lower row is the closest to the central one among the rows left, so when even its
+                        // best possible seat can't beat the best seat found no row left can
+                        if (finalSeat != null && rowLowerSearchIndex >= 0 &&
+                            Seat.GetMaxScore(orderedRows.Count, rowLowerSearchIndex + 1) <= finalSeat.Score)
+                            break;
+
                         Seat? candidateBestSeat = null;
                         if (rowUpperSearchIndex < bookingScreen.Rows.Count)
                         {
@@ -71,7 +77,6 @@ public class BookingService(CinemaBookingSystemDbContext dbContext, IMovieServic
                         {
                             rowUpperSearchIndex++;
                             rowLowerSearchIndex--;
-                            if (finalSeat != null) break;
                             continue;
                         }
 

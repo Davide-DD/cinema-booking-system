@@ -200,6 +200,31 @@ public class BookingTests(CinemaBookingSystemFixture cinemaBookingSystemFixture)
     }
 
     [Fact]
+    public async Task BookScreenings_InputNoRowAndSeatWithOnlyEdgeSeatFreeInCentralRow_ReturnsCentralSeatOfAnotherRow()
+    {
+        using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient();
+        // Screening 1 is in screen 1: seat 1 of the central row 2 scores less than the central seats of rows 1 and 3
+        BookingRequest[] centralRowBookingRequests = Enumerable.Range(2, 9)
+            .Select(seatNumber => new BookingRequest
+            {
+                ScreeningId = 1,
+                RowId = 2,
+                SeatNumber = seatNumber
+            })
+            .ToArray();
+        await CommonBookScreenings(client, centralRowBookingRequests);
+
+        Booking[] bookings = await CommonBookScreenings(client, new BookingRequest
+        {
+            ScreeningId = 1
+        });
+
+        Booking booking = Assert.Single(bookings);
+        Assert.Contains(booking.RowId, new[] { 1, 3 });
+        Assert.Contains(booking.SeatNumber, new[] { 5, 6 });
+    }
+
+    [Fact]
     public async Task BookScreenings_InputTwoBookingsWithNoRowAndSeat_ReturnsDifferentSeats()
     {
         using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient();

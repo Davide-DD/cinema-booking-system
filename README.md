@@ -108,7 +108,7 @@ Errors are returned as [problem details](https://www.rfc-editor.org/rfc/rfc9457)
 - A request with several bookings is all or nothing: if one of them can't be confirmed, none is saved.
 - Past screenings can't be booked or cancelled.
 - A seat already taken returns `409 Conflict`.
-- Without a row and a seat, the API picks the best free seat. Each seat gets a score that decreases with its distance from the central row and from the centre of its row (`Seat.Score`). If the central row has a free seat, its most central one is taken; otherwise the free seat with the highest score in the other rows wins. If the screen is full, the request returns `409 Conflict`.
+- Without a row and a seat, the API picks the best free seat. Each seat gets a score that decreases with its distance from the central row and from the centre of its row (`Seat.Score`). The free seat with the highest score wins. Rows are searched from the central one outwards, and the search stops as soon as no row left can beat the best seat found, since a seat scores at most 1 more than its row. If the screen is full, the request returns `409 Conflict`.
 
 ## Tests
 
