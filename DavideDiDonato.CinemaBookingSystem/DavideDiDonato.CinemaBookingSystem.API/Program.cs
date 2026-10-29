@@ -13,8 +13,6 @@ using Microsoft.OpenApi;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddProblemDetails();
 builder.Services.AddValidation();
 builder.Services.AddOpenApi(options =>
@@ -43,7 +41,7 @@ builder.Services.AddScoped<IBookingService, BookingService>();
 builder.Services.AddScoped<IScreenService, ScreenService>();
 builder.Services.AddScoped<IMovieService, MovieService>();
 builder.Services.AddAuthentication("Selector")
-    .AddPolicyScheme("Selector", "Bearer token or API key", options =>
+    .AddPolicyScheme("Selector", "Bearer token or mock authentication", options =>
     {
         options.ForwardDefaultSelector = context =>
         {
@@ -60,34 +58,32 @@ builder.Services.AddAuthorizationBuilder()
     .AddPolicy(Roles.Admin, policy => policy.RequireRole(Roles.Admin));
 builder.Services.AddEndpointsApiExplorer();
 
-var connectionString =
-    builder.Configuration.GetConnectionString("DatabaseConnectionString")
-    ?? throw new InvalidOperationException("Connection string not found.");
+var connectionString = builder.Configuration.GetConnectionString("DatabaseConnectionString");
+if (string.IsNullOrWhiteSpace(connectionString))
+    throw new InvalidOperationException("Connection string not found.");
 builder.Services.AddDbContext<CinemaBookingSystemDbContext>(options => { options.UseNpgsql(connectionString); });
 
-builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<CinemaBookingSystemExceptionHandler>();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
     app.UseSwaggerUI(options => options.SwaggerEndpoint("/openapi/v1.json", "v1"));
     using IServiceScope scope = app.Services.CreateScope();
-    scope.ServiceProvider.GetService<Seeder>()!.SeedData().GetAwaiter().GetResult();
+    await scope.ServiceProvider.GetRequiredService<Seeder>().SeedData();
 }
 
 app.UseExceptionHandler();
 app.UseStatusCodePages();
 
+app.UseHttpsRedirection();
+
 app.UseRouting();
 
 app.UseAuthentication();
 app.UseAuthorization();
-
-app.UseHttpsRedirection();
 
 app.MapBookingEndpoints();
 app.MapMovieEndpoints();
