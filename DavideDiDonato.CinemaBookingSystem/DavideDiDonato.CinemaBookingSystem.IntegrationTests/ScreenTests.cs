@@ -214,6 +214,36 @@ public class ScreenTests(CinemaBookingSystemFixture cinemaBookingSystemFixture) 
     }
 
     [Fact]
+    public async Task CreateOrUpdateScreen_InputFewerSeatsThanBookedSeat_ReturnsConflict()
+    {
+        using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient(asAdmin: true);
+        await CommonAddBooking(screeningId: 1, rowId: 1, seatNumber: 9);
+        Screen screen = (await CommonGetScreen(1))!;
+        screen.Rows.Single(row => row.Id == 1).Seats = 8;
+
+        using HttpResponseMessage response = await client.PutAsJsonAsync("/screens/1", screen);
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        Screen? notUpdatedScreen = await CommonGetScreen(1);
+        Assert.Equal(10, notUpdatedScreen?.Rows.Single(row => row.Id == 1).Seats);
+    }
+
+    [Fact]
+    public async Task CreateOrUpdateScreen_InputFewerSeatsKeepingBookedSeats_UpdatesSeats()
+    {
+        using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient(asAdmin: true);
+        await CommonAddBooking(screeningId: 1, rowId: 1, seatNumber: 5);
+        Screen screen = (await CommonGetScreen(1))!;
+        screen.Rows.Single(row => row.Id == 1).Seats = 8;
+
+        using HttpResponseMessage response = await client.PutAsJsonAsync("/screens/1", screen);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Screen? updatedScreen = await CommonGetScreen(1);
+        Assert.Equal(8, updatedScreen?.Rows.Single(row => row.Id == 1).Seats);
+    }
+
+    [Fact]
     public async Task CreateOrUpdateScreen_InputMismatchingId_ReturnsBadRequest()
     {
         using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient(asAdmin: true);
@@ -311,5 +341,21 @@ public class ScreenTests(CinemaBookingSystemFixture cinemaBookingSystemFixture) 
             .FirstOrDefaultAsync(screen => screen.Id == id);
 
         return result;
+    }
+
+    private async Task CommonAddBooking(int screeningId, int rowId, int seatNumber)
+    {
+        using IServiceScope scope = cinemaBookingSystemFixture.CreateScope();
+        CinemaBookingSystemDbContext cinemaBookingSystemDbContext =
+            scope.ServiceProvider.GetRequiredService<CinemaBookingSystemDbContext>();
+
+        cinemaBookingSystemDbContext.Bookings.Add(new Booking
+        {
+            UserId = 1,
+            ScreeningId = screeningId,
+            RowId = rowId,
+            SeatNumber = seatNumber
+        });
+        await cinemaBookingSystemDbContext.SaveChangesAsync();
     }
 }

@@ -38,6 +38,7 @@ builder.Services.AddOpenApi(options =>
 });
 builder.Services.AddScoped<Seeder>();
 builder.Services.AddScoped<IBookingService, BookingService>();
+builder.Services.AddScoped<IBookedSeatService, BookedSeatService>();
 builder.Services.AddScoped<IScreenService, ScreenService>();
 builder.Services.AddScoped<IMovieService, MovieService>();
 builder.Services.AddAuthentication("Selector")

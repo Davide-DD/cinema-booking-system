@@ -22,9 +22,9 @@ The API is a single service split into three domains:
 |---|---|---|---|
 | Programming | Movies and their screenings | `/movies` | `MovieService` |
 | Venue | Screens and their rows | `/screens` | `ScreenService` |
-| Booking | Bookings | `/bookings` | `BookingService` |
+| Booking | Bookings | `/bookings` | `BookingService`, `BookedSeatService` |
 
-Each service reads and writes only the tables of its own domain. Booking needs the date of a screening and the rows of its screen: it asks `MovieService.GetScreeningAsync` and `ScreenService.GetScreenAsync` for them instead of querying their tables. In the same way, Programming asks `ScreenService.GetScreenAsync` whether the screen of a screening exists. Entities refer to other domains only by id (`Booking.ScreeningId`, `Booking.RowId`, `Screening.ScreenId`), never through navigation properties.
+Each service reads and writes only the tables of its own domain. Booking needs the date of a screening and the rows of its screen: it asks `MovieService.GetScreeningAsync` and `ScreenService.GetScreenAsync` for them instead of querying their tables. In the same way, Programming asks `ScreenService.GetScreenAsync` whether the screen of a screening exists. Before a change that could leave booked seats behind, Programming and Venue ask Booking through `BookedSeatService`, which is separate from `BookingService` because that one already depends on their services. Entities refer to other domains only by id (`Booking.ScreeningId`, `Booking.RowId`, `Screening.ScreenId`), never through navigation properties.
 
 A single service with one database is enough for this size: a booking is saved in one transaction and there is nothing to keep in sync. To split it into separate services:
 
@@ -97,6 +97,8 @@ In Swagger UI, press **Authorize** and type only the token (`1` or `1:Admin`).
 | `DELETE` | `/bookings/{id}` | Booking owner | Cancels a booking of an upcoming screening |
 
 Updating a movie or a screen replaces its screenings or rows with the ones in the body: the ones left out are deleted. New or rescheduled screenings must be in the future, while past screenings can stay in the body unchanged. Screening dates must include a time zone (`Z` or an offset like `+01:00`) and are stored in UTC.
+
+Mistakes can be corrected freely until they affect bookings. Moving a screening with bookings to another screen, or lowering the seats of a row below a booked seat, returns `409 Conflict` instead of leaving bookings on seats that don't exist: the customers holding them need a decision, not a silent change. Deleting the screening and creating it again cancels its bookings.
 
 Lists are ordered by id. `page` defaults to 1 and `pageSize` to 10. A `page` lower than 1 is treated as 1 and `pageSize` is kept between 1 and 100.
 

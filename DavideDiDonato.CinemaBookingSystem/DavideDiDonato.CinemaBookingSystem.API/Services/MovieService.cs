@@ -9,7 +9,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace DavideDiDonato.CinemaBookingSystem.API.Services;
 
-public class MovieService(CinemaBookingSystemDbContext dbContext, IScreenService screenService): IMovieService
+public class MovieService(CinemaBookingSystemDbContext dbContext, IScreenService screenService,
+    IBookedSeatService bookedSeatService) : IMovieService
 {
     public async Task<Movie[]> GetMoviesAsync(ClaimsPrincipal currentUser, int page, int pageSize, CancellationToken cancellationToken)
     {
@@ -46,13 +47,17 @@ public class MovieService(CinemaBookingSystemDbContext dbContext, IScreenService
                 throw new CinemaBookingSystemApiException(HttpStatusCode.BadRequest,
                     "The screening doesn't belong to the movie");
             screening.MovieId = movie.Id;
+            Screening? existingScreening = existingMovie?.Screenings.FirstOrDefault(e => e.Id == screening.Id);
+            if (existingScreening != null && existingScreening.ScreenId != screening.ScreenId &&
+                await bookedSeatService.HasBookedSeatsAsync(screening.Id, cancellationToken))
+                throw new CinemaBookingSystemApiException(HttpStatusCode.Conflict,
+                    "The screening has bookings and can't move to another screen");
             if (screening.DateTime.Kind == DateTimeKind.Unspecified)
                 throw new CinemaBookingSystemApiException(HttpStatusCode.BadRequest,
                     "Screening dates must include a time zone");
             // The database only accepts UTC dates
             screening.DateTime = screening.DateTime.ToUniversalTime();
             if (screening.DateTime > DateTime.UtcNow) continue;
-            Screening? existingScreening = existingMovie?.Screenings.FirstOrDefault(e => e.Id == screening.Id);
             if (existingScreening == null || existingScreening.DateTime != screening.DateTime)
                 throw new CinemaBookingSystemApiException(HttpStatusCode.BadRequest,
                     "New or rescheduled screenings must be in the future");

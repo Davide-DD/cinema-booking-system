@@ -9,7 +9,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace DavideDiDonato.CinemaBookingSystem.API.Services;
 
-public class ScreenService(CinemaBookingSystemDbContext dbContext) : IScreenService
+public class ScreenService(CinemaBookingSystemDbContext dbContext, IBookedSeatService bookedSeatService)
+    : IScreenService
 {
     public async Task<Screen[]> GetScreensAsync(ClaimsPrincipal currentUser, int page, int pageSize,
         CancellationToken cancellationToken)
@@ -48,6 +49,11 @@ public class ScreenService(CinemaBookingSystemDbContext dbContext) : IScreenServ
                 throw new CinemaBookingSystemApiException(HttpStatusCode.BadRequest,
                     "The row doesn't belong to the screen");
             row.ScreenId = screen.Id;
+            Row? existingRow = existingScreen?.Rows.FirstOrDefault(e => e.Id == row.Id);
+            if (existingRow != null && row.Seats < existingRow.Seats &&
+                await bookedSeatService.GetHighestBookedSeatNumberAsync(row.Id, cancellationToken) > row.Seats)
+                throw new CinemaBookingSystemApiException(HttpStatusCode.Conflict,
+                    "The row can't lose seats that are booked");
         }
         if (screen.Id == 0)
         {
