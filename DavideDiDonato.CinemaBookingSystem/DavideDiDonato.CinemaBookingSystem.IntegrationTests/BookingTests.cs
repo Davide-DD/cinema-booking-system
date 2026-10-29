@@ -364,6 +364,32 @@ public class BookingTests(CinemaBookingSystemFixture cinemaBookingSystemFixture)
     }
 
     [Fact]
+    public async Task BookScreenings_InputTooManyBookingRequests_ReturnsBadRequest()
+    {
+        using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient();
+        BookingRequest[] bookingRequests = Enumerable.Range(1, 11)
+            .Select(attempt => new BookingRequest
+            {
+                ScreeningId = 1
+            })
+            .ToArray();
+
+        using HttpResponseMessage response = await client.PostAsJsonAsync("/bookings", bookingRequests);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task BookScreenings_InputNoBookingRequests_ReturnsBadRequest()
+    {
+        using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient();
+
+        using HttpResponseMessage response = await client.PostAsJsonAsync("/bookings", Array.Empty<BookingRequest>());
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
     public async Task BookScreenings_InputNotExistingSeat_ReturnsBadRequest()
     {
         using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient();

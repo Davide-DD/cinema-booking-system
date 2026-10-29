@@ -14,9 +14,15 @@ namespace DavideDiDonato.CinemaBookingSystem.API.Services;
 public class BookingService(CinemaBookingSystemDbContext dbContext, IMovieService movieService,
     IScreenService screenService) : IBookingService
 {
+    // Also limits the screenings locked by a single request
+    private const int MaxBookingRequests = 10;
+
     public async Task<List<Booking>> BookScreeningsAsync(ClaimsPrincipal currentUser, BookingRequest[] bookingRequests,
         CancellationToken cancellationToken)
     {
+        if (bookingRequests.Length == 0 || bookingRequests.Length > MaxBookingRequests)
+            throw new CinemaBookingSystemApiException(HttpStatusCode.BadRequest,
+                $"From 1 to {MaxBookingRequests} seats can be booked at once");
         // The body can still send null where the model doesn't allow it
         if (bookingRequests.Any(e => e == null))
             throw new CinemaBookingSystemApiException(HttpStatusCode.BadRequest, "Booking requests can't be null");
