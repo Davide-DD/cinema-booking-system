@@ -14,6 +14,8 @@ public class DateTimeGreaterThanNow : ValidationAttribute
     {
         var dateValue = objValue as DateTime? ?? new DateTime();
         
-        return dateValue > DateTime.Now ? ValidationResult.Success : new ValidationResult(FormatErrorMessage(validationContext.DisplayName));
+        return dateValue.ToUniversalTime() > DateTime.UtcNow
+            ? ValidationResult.Success
+            : new ValidationResult(FormatErrorMessage(validationContext.DisplayName));
     }
 }
