@@ -36,8 +36,8 @@ public static class MovieEndpoints
         return TypedResults.Ok(await movieService.CreateOrUpdateMovieAsync(id, movie, cancellationToken));
     }
 
-    private static async Task<Ok<Movie[]>> GetMovies([FromQuery] int page, [FromQuery] int pageSize, IMovieService movieService,
-        ClaimsPrincipal user, CancellationToken cancellationToken)
+    private static async Task<Ok<Movie[]>> GetMovies(IMovieService movieService, ClaimsPrincipal user,
+        CancellationToken cancellationToken, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
     {
         return TypedResults.Ok(await movieService.GetMoviesAsync(user, page, pageSize, cancellationToken));
     }

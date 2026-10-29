@@ -1,5 +1,6 @@
 ﻿using System.Net;
 using System.Net.Http.Json;
+using System.Text;
 using DavideDiDonato.CinemaBookingSystem.API.Contracts;
 using DavideDiDonato.CinemaBookingSystem.Domain;
 using DavideDiDonato.CinemaBookingSystem.Infrastructure.Database;
@@ -299,6 +300,17 @@ public class BookingTests(CinemaBookingSystemFixture cinemaBookingSystemFixture)
         using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient();
 
         using HttpResponseMessage response = await CommonPostBooking(client, screeningId: 1, rowId: 1);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task BookScreenings_InputScreeningIdAsText_ReturnsBadRequest()
+    {
+        using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient();
+        using StringContent content = new StringContent("[{\"screeningId\":\"1\"}]", Encoding.UTF8, "application/json");
+
+        using HttpResponseMessage response = await client.PostAsync("/bookings", content);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }

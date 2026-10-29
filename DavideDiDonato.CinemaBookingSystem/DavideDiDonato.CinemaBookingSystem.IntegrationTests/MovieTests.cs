@@ -56,6 +56,17 @@ public class MovieTests(CinemaBookingSystemFixture cinemaBookingSystemFixture) :
     }
 
     [Fact]
+    public async Task GetMovies_InputNoPaging_ReturnsFirstPage()
+    {
+        using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient();
+
+        Movie[]? movies = await client.GetFromJsonAsync<Movie[]>("/movies");
+
+        Assert.NotNull(movies);
+        Assert.Equal(2, movies.Length);
+    }
+
+    [Fact]
     public async Task GetMovies_InputNoAuthentication_ReturnsUnauthorized()
     {
         using HttpClient client = cinemaBookingSystemFixture.WebApplicationFactory.CreateClient();

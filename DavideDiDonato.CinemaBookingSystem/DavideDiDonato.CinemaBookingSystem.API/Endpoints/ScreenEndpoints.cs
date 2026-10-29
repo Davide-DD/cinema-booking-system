@@ -30,8 +30,8 @@ public static class ScreenEndpoints
         return TypedResults.NoContent();
     }
 
-    private static async Task<Ok<Screen[]>> GetScreens([FromQuery] int page, [FromQuery] int pageSize, 
-        ClaimsPrincipal user, IScreenService screenService, CancellationToken cancellationToken)
+    private static async Task<Ok<Screen[]>> GetScreens(ClaimsPrincipal user, IScreenService screenService,
+        CancellationToken cancellationToken, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
     { 
         return TypedResults.Ok(await screenService.GetScreensAsync(user, page, pageSize, cancellationToken));
     }

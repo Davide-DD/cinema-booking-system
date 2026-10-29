@@ -17,6 +17,10 @@ public class CinemaBookingSystemExceptionHandler(
             case CinemaBookingSystemApiException apiException:
                 statusCode = (int)apiException.HttpStatusCode;
                 break;
+            // Thrown in Development when a request can't be bound, like a missing parameter or an invalid body
+            case BadHttpRequestException badHttpRequestException:
+                statusCode = badHttpRequestException.StatusCode;
+                break;
             default:
                 return false;
         }
