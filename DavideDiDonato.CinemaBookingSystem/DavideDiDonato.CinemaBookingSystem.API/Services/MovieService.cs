@@ -2,6 +2,7 @@ using System.Net;
 using System.Security.Claims;
 using DavideDiDonato.CinemaBookingSystem.API.Contracts;
 using DavideDiDonato.CinemaBookingSystem.API.Exceptions;
+using DavideDiDonato.CinemaBookingSystem.API.Extensions;
 using DavideDiDonato.CinemaBookingSystem.Domain;
 using DavideDiDonato.CinemaBookingSystem.Infrastructure.Database;
 using Microsoft.EntityFrameworkCore;
@@ -13,8 +14,8 @@ public class MovieService(CinemaBookingSystemDbContext dbContext): IMovieService
     public async Task<Movie[]> GetMovies(ClaimsPrincipal currentUser, int page, int pageSize, CancellationToken cancellationToken)
     {
         return await dbContext.Movies.Include(e => e.Screenings)
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
+            .OrderBy(e => e.Id)
+            .Paginate(page, pageSize)
             .ToArrayAsync(cancellationToken);
     }
 

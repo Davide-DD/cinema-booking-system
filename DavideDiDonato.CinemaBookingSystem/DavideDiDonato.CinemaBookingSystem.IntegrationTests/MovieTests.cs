@@ -40,7 +40,19 @@ public class MovieTests(CinemaBookingSystemFixture cinemaBookingSystemFixture) :
         Movie[]? movies = await client.GetFromJsonAsync<Movie[]>("/movies?page=2&pageSize=1");
 
         Assert.NotNull(movies);
-        Assert.Single(movies);
+        Movie movie = Assert.Single(movies);
+        Assert.Equal(2, movie.Id);
+    }
+
+    [Fact]
+    public async Task GetMovies_InputPageZero_ReturnsFirstPage()
+    {
+        using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient();
+
+        Movie[]? movies = await client.GetFromJsonAsync<Movie[]>("/movies?page=0&pageSize=10");
+
+        Assert.NotNull(movies);
+        Assert.Equal(2, movies.Length);
     }
 
     [Fact]

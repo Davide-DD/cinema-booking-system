@@ -2,6 +2,7 @@ using System.Net;
 using System.Security.Claims;
 using DavideDiDonato.CinemaBookingSystem.API.Contracts;
 using DavideDiDonato.CinemaBookingSystem.API.Exceptions;
+using DavideDiDonato.CinemaBookingSystem.API.Extensions;
 using DavideDiDonato.CinemaBookingSystem.Domain;
 using DavideDiDonato.CinemaBookingSystem.Infrastructure.Database;
 using Microsoft.EntityFrameworkCore;
@@ -14,8 +15,8 @@ public class ScreenService(CinemaBookingSystemDbContext dbContext) : IScreenServ
         CancellationToken cancellationToken)
     {
         return await dbContext.Screens.Include(e => e.Rows)
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
+            .OrderBy(e => e.Id)
+            .Paginate(page, pageSize)
             .ToArrayAsync(cancellationToken);
     }
 

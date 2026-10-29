@@ -40,7 +40,19 @@ public class ScreenTests(CinemaBookingSystemFixture cinemaBookingSystemFixture) 
         Screen[]? screens = await client.GetFromJsonAsync<Screen[]>("/screens?page=2&pageSize=1");
 
         Assert.NotNull(screens);
-        Assert.Single(screens);
+        Screen screen = Assert.Single(screens);
+        Assert.Equal(2, screen.Id);
+    }
+
+    [Fact]
+    public async Task GetScreens_InputPageZero_ReturnsFirstPage()
+    {
+        using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient();
+
+        Screen[]? screens = await client.GetFromJsonAsync<Screen[]>("/screens?page=0&pageSize=10");
+
+        Assert.NotNull(screens);
+        Assert.Equal(2, screens.Length);
     }
 
     [Fact]
