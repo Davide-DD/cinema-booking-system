@@ -12,13 +12,13 @@ public static class ScreenEndpoints
 {
     public static IEndpointRouteBuilder MapScreenEndpoints(this IEndpointRouteBuilder endpoints)
     {
-        RouteGroupBuilder bookingGroup = endpoints.MapGroup("/screens")
+        RouteGroupBuilder screenGroup = endpoints.MapGroup("/screens")
             .WithTags("Screens")
             .RequireAuthorization();
 
-        bookingGroup.MapPut("/{id:int?}", CreateOrUpdateScreen).RequireAuthorization(Roles.Admin);
-        bookingGroup.MapGet("/", GetScreens);
-        bookingGroup.MapDelete("/{id:int}", DeleteScreen).RequireAuthorization(Roles.Admin);
+        screenGroup.MapPut("/{id:int?}", CreateOrUpdateScreen).RequireAuthorization(Roles.Admin);
+        screenGroup.MapGet("/", GetScreens);
+        screenGroup.MapDelete("/{id:int}", DeleteScreen).RequireAuthorization(Roles.Admin);
 
         return endpoints;
     }
@@ -26,20 +26,20 @@ public static class ScreenEndpoints
     private static async Task<NoContent> DeleteScreen([FromRoute] int id, IScreenService screenService, ClaimsPrincipal user,
         CancellationToken cancellationToken)
     {
-        await screenService.DeleteScreen(user, id, cancellationToken);
+        await screenService.DeleteScreenAsync(user, id, cancellationToken);
         return TypedResults.NoContent();
     }
 
     private static async Task<Ok<Screen[]>> GetScreens([FromQuery] int page, [FromQuery] int pageSize, 
         ClaimsPrincipal user, IScreenService screenService, CancellationToken cancellationToken)
     { 
-        return TypedResults.Ok(await screenService.GetScreens(user, page, pageSize, cancellationToken));
+        return TypedResults.Ok(await screenService.GetScreensAsync(user, page, pageSize, cancellationToken));
     }
 
     private static async Task<Ok<Screen>> CreateOrUpdateScreen([FromRoute] int? id, [FromBody] Screen screen, IScreenService screenService,
         ClaimsPrincipal user, CancellationToken cancellationToken)
     {
-        return TypedResults.Ok(await screenService.CreateOrUpdateScreen(id, screen, cancellationToken));
+        return TypedResults.Ok(await screenService.CreateOrUpdateScreenAsync(id, screen, cancellationToken));
     }
 
 }

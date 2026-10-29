@@ -11,7 +11,7 @@ namespace DavideDiDonato.CinemaBookingSystem.API.Services;
 
 public class ScreenService(CinemaBookingSystemDbContext dbContext) : IScreenService
 {
-    public async Task<Screen[]> GetScreens(ClaimsPrincipal currentUser, int page, int pageSize,
+    public async Task<Screen[]> GetScreensAsync(ClaimsPrincipal currentUser, int page, int pageSize,
         CancellationToken cancellationToken)
     {
         return await dbContext.Screens.Include(e => e.Rows)
@@ -20,7 +20,7 @@ public class ScreenService(CinemaBookingSystemDbContext dbContext) : IScreenServ
             .ToArrayAsync(cancellationToken);
     }
 
-    public async Task DeleteScreen(ClaimsPrincipal currentUser, int id, CancellationToken cancellationToken)
+    public async Task DeleteScreenAsync(ClaimsPrincipal currentUser, int id, CancellationToken cancellationToken)
     {
         Screen? screen = await dbContext.Screens.FindAsync([id], cancellationToken);
         if (screen == null) throw new CinemaBookingSystemApiException(HttpStatusCode.NotFound, "Screen doesn't exist");
@@ -28,7 +28,7 @@ public class ScreenService(CinemaBookingSystemDbContext dbContext) : IScreenServ
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
-    public async Task<Screen> CreateOrUpdateScreen(int? id, Screen screen, CancellationToken cancellationToken)
+    public async Task<Screen> CreateOrUpdateScreenAsync(int? id, Screen screen, CancellationToken cancellationToken)
     {
         if (id != null && id != screen.Id) throw new CinemaBookingSystemApiException(HttpStatusCode.BadRequest, "Screen id mismatch");
         Screen? existingScreen = await dbContext.Screens.Where(e => e.Id == screen.Id)

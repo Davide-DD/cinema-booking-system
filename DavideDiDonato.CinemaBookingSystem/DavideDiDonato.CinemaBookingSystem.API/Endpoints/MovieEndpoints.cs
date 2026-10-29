@@ -12,13 +12,13 @@ public static class MovieEndpoints
 {
     public static IEndpointRouteBuilder MapMovieEndpoints(this IEndpointRouteBuilder endpoints)
     {
-        RouteGroupBuilder bookingGroup = endpoints.MapGroup("/movies")
+        RouteGroupBuilder movieGroup = endpoints.MapGroup("/movies")
             .WithTags("Movies")
             .RequireAuthorization();
 
-        bookingGroup.MapGet("/", GetMovies);
-        bookingGroup.MapPut("/{id:int?}", CreateOrUpdateMovie).RequireAuthorization(Roles.Admin);
-        bookingGroup.MapDelete("/{id:int}", DeleteMovie).RequireAuthorization(Roles.Admin);
+        movieGroup.MapGet("/", GetMovies);
+        movieGroup.MapPut("/{id:int?}", CreateOrUpdateMovie).RequireAuthorization(Roles.Admin);
+        movieGroup.MapDelete("/{id:int}", DeleteMovie).RequireAuthorization(Roles.Admin);
 
         return endpoints;
     }
@@ -26,20 +26,20 @@ public static class MovieEndpoints
     private static async Task<NoContent> DeleteMovie([FromRoute] int id, IMovieService movieService, ClaimsPrincipal user,
         CancellationToken cancellationToken)
     {
-        await movieService.DeleteMovie(user, id, cancellationToken);
+        await movieService.DeleteMovieAsync(user, id, cancellationToken);
         return TypedResults.NoContent();
     }
 
     private static async Task<Ok<Movie>> CreateOrUpdateMovie([FromRoute] int? id, [FromBody] Movie movie, 
         IMovieService movieService, CancellationToken cancellationToken)
     { 
-        return TypedResults.Ok(await movieService.CreateOrUpdateMovie(id, movie, cancellationToken));
+        return TypedResults.Ok(await movieService.CreateOrUpdateMovieAsync(id, movie, cancellationToken));
     }
 
     private static async Task<Ok<Movie[]>> GetMovies([FromQuery] int page, [FromQuery] int pageSize, IMovieService movieService,
         ClaimsPrincipal user, CancellationToken cancellationToken)
     {
-        return TypedResults.Ok(await movieService.GetMovies(user, page, pageSize, cancellationToken));
+        return TypedResults.Ok(await movieService.GetMoviesAsync(user, page, pageSize, cancellationToken));
     }
 
 }

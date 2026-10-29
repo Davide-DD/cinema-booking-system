@@ -6,7 +6,7 @@ namespace DavideDiDonato.CinemaBookingSystem.API.Services;
 
 public interface IMovieService
 {
-    public Task<Movie[]> GetMovies(ClaimsPrincipal currentUser, int page, int pageSize, CancellationToken cancellationToken);
-    public Task DeleteMovie(ClaimsPrincipal currentUser, int id, CancellationToken cancellationToken);
-    public Task<Movie> CreateOrUpdateMovie(int? id, Movie movie, CancellationToken cancellationToken);
+    public Task<Movie[]> GetMoviesAsync(ClaimsPrincipal currentUser, int page, int pageSize, CancellationToken cancellationToken);
+    public Task DeleteMovieAsync(ClaimsPrincipal currentUser, int id, CancellationToken cancellationToken);
+    public Task<Movie> CreateOrUpdateMovieAsync(int? id, Movie movie, CancellationToken cancellationToken);
 }

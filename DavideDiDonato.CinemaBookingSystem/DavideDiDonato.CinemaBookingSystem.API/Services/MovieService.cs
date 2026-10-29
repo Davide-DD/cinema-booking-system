@@ -11,7 +11,7 @@ namespace DavideDiDonato.CinemaBookingSystem.API.Services;
 
 public class MovieService(CinemaBookingSystemDbContext dbContext): IMovieService
 {
-    public async Task<Movie[]> GetMovies(ClaimsPrincipal currentUser, int page, int pageSize, CancellationToken cancellationToken)
+    public async Task<Movie[]> GetMoviesAsync(ClaimsPrincipal currentUser, int page, int pageSize, CancellationToken cancellationToken)
     {
         return await dbContext.Movies.Include(e => e.Screenings)
             .OrderBy(e => e.Id)
@@ -19,7 +19,7 @@ public class MovieService(CinemaBookingSystemDbContext dbContext): IMovieService
             .ToArrayAsync(cancellationToken);
     }
 
-    public async Task DeleteMovie(ClaimsPrincipal currentUser, int id, CancellationToken cancellationToken)
+    public async Task DeleteMovieAsync(ClaimsPrincipal currentUser, int id, CancellationToken cancellationToken)
     {
         Movie? movie = await dbContext.Movies.FindAsync([id], cancellationToken);
         if (movie == null) throw new CinemaBookingSystemApiException(HttpStatusCode.NotFound, "Movie doesn't exist");
@@ -27,7 +27,7 @@ public class MovieService(CinemaBookingSystemDbContext dbContext): IMovieService
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
-    public async Task<Movie> CreateOrUpdateMovie(int? id, Movie movie, CancellationToken cancellationToken)
+    public async Task<Movie> CreateOrUpdateMovieAsync(int? id, Movie movie, CancellationToken cancellationToken)
     {
         if (id != null && id != movie.Id) throw new CinemaBookingSystemApiException(HttpStatusCode.BadRequest, "Movie id mismatch");
         Movie? existingMovie = await dbContext.Movies.Where(e => e.Id == movie.Id)
