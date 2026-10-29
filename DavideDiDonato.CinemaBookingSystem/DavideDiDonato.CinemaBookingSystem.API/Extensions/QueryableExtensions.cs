@@ -6,8 +6,9 @@ public static class QueryableExtensions
 
     public static IQueryable<T> Paginate<T>(this IQueryable<T> query, int page, int pageSize)
     {
-        int boundedPage = Math.Max(page, 1);
         int boundedPageSize = Math.Clamp(pageSize, 1, MaxPageSize);
+        // Keeps the records to skip within int, so a huge page returns an empty list instead of overflowing
+        int boundedPage = Math.Clamp(page, 1, int.MaxValue / boundedPageSize);
 
         IQueryable<T> result = query
             .Skip((boundedPage - 1) * boundedPageSize)

@@ -100,7 +100,7 @@ Updating a movie or a screen replaces its screenings or rows with the ones in th
 
 Mistakes can be corrected freely until they affect bookings. Moving a screening with bookings to another screen, or lowering the seats of a row below a booked seat, returns `409 Conflict` instead of leaving bookings on seats that don't exist: the customers holding them need a decision, not a silent change. Deleting the screening and creating it again cancels its bookings.
 
-Lists are ordered by id. `page` defaults to 1 and `pageSize` to 10. A `page` lower than 1 is treated as 1 and `pageSize` is kept between 1 and 100.
+Lists are ordered by id. `page` defaults to 1 and `pageSize` to 10. A `page` lower than 1 is treated as 1, a page past the end returns an empty list and `pageSize` is kept between 1 and 100.
 
 Errors are returned as [problem details](https://www.rfc-editor.org/rfc/rfc9457) with the matching status code.
 
