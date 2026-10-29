@@ -5,6 +5,8 @@ using DavideDiDonato.CinemaBookingSystem.API.Exceptions;
 using DavideDiDonato.CinemaBookingSystem.Domain;
 using DavideDiDonato.CinemaBookingSystem.Infrastructure.Database;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
+using Npgsql;
 
 namespace DavideDiDonato.CinemaBookingSystem.API.Services;
 
@@ -15,6 +17,14 @@ public class BookingService(CinemaBookingSystemDbContext dbContext, IMovieServic
         CancellationToken cancellationToken)
     {
         int currentUserId = int.Parse(currentUser.FindFirst(e => e.Type == ClaimTypes.NameIdentifier)!.Value);
+        await using IDbContextTransaction transaction =
+            await dbContext.Database.BeginTransactionAsync(cancellationToken);
+        // Bookings of the same screening run one at a time, so each request sees the seats booked before it.
+        // The lock is released with the transaction and taken in screening order to avoid deadlocks
+        foreach (int screeningId in bookingRequests.Select(e => e.ScreeningId).Distinct().Order())
+            await dbContext.Database.ExecuteSqlAsync($"SELECT pg_advisory_xact_lock({screeningId})",
+                cancellationToken);
+
         List<Booking> bookings = new List<Booking>();
         foreach (IGrouping<int, BookingRequest> screeningBookingRequests in bookingRequests
                      .GroupBy(bookingRequest => bookingRequest.ScreeningId))
@@ -107,7 +117,16 @@ public class BookingService(CinemaBookingSystemDbContext dbContext, IMovieServic
         }
 
         await dbContext.Bookings.AddRangeAsync(bookings, cancellationToken);
-        await dbContext.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException e) when (e.InnerException is PostgresException postgresException &&
+                                          postgresException.SqlState == PostgresErrorCodes.UniqueViolation)
+        {
+            throw new CinemaBookingSystemApiException(HttpStatusCode.Conflict, "The requested seat is taken");
+        }
+        await transaction.CommitAsync(cancellationToken);
 
         return bookings;
     }

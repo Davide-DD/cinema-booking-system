@@ -259,6 +259,41 @@ public class BookingTests(CinemaBookingSystemFixture cinemaBookingSystemFixture)
     }
 
     [Fact]
+    public async Task BookScreenings_InputConcurrentBookingsOfSameSeat_ReturnsOneBookingAndConflicts()
+    {
+        HttpClient[] clients = Enumerable.Range(1, 10)
+            .Select(userId => cinemaBookingSystemFixture.CreateAuthenticatedClient(userId))
+            .ToArray();
+
+        HttpResponseMessage[] responses = await Task.WhenAll(clients
+            .Select(client => CommonPostBooking(client, screeningId: 1, rowId: 1, seatNumber: 5)));
+
+        Assert.Single(responses, response => response.StatusCode == HttpStatusCode.OK);
+        Assert.All(responses.Where(response => response.StatusCode != HttpStatusCode.OK),
+            response => Assert.Equal(HttpStatusCode.Conflict, response.StatusCode));
+    }
+
+    [Fact]
+    public async Task BookScreenings_InputConcurrentBookingsWithNoRowAndSeat_ReturnsDifferentSeats()
+    {
+        HttpClient[] clients = Enumerable.Range(1, 10)
+            .Select(userId => cinemaBookingSystemFixture.CreateAuthenticatedClient(userId))
+            .ToArray();
+
+        Booking[][] bookings = await Task.WhenAll(clients
+            .Select(client => CommonBookScreenings(client, new BookingRequest
+            {
+                ScreeningId = 1
+            })));
+
+        Assert.Equal(10, bookings
+            .Select(clientBookings => Assert.Single(clientBookings))
+            .Select(booking => (booking.RowId, booking.SeatNumber))
+            .Distinct()
+            .Count());
+    }
+
+    [Fact]
     public async Task BookScreenings_InputOnlyRow_ReturnsBadRequest()
     {
         using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient();
