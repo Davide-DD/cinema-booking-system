@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace DavideDiDonato.CinemaBookingSystem.API.Exceptions;
 
@@ -12,6 +13,7 @@ public class CinemaBookingSystemExceptionHandler(
         CancellationToken cancellationToken)
     {
         int statusCode;
+        string detail = exception.Message;
         switch (exception)
         {
             case CinemaBookingSystemApiException apiException:
@@ -21,19 +23,24 @@ public class CinemaBookingSystemExceptionHandler(
             case BadHttpRequestException badHttpRequestException:
                 statusCode = badHttpRequestException.StatusCode;
                 break;
+            // Thrown when another request deletes a record between reading and saving it, like a double click on delete
+            case DbUpdateConcurrencyException:
+                statusCode = StatusCodes.Status404NotFound;
+                detail = "The record was deleted by another request";
+                break;
             default:
                 return false;
         }
 
         // Expected rejections, not failures: unhandled exceptions are logged as errors by the framework
         logger.LogInformation("Request {Method} {Path} rejected with {StatusCode}: {Detail}",
-            httpContext.Request.Method, httpContext.Request.Path, statusCode, exception.Message);
+            httpContext.Request.Method, httpContext.Request.Path, statusCode, detail);
 
         httpContext.Response.StatusCode = statusCode;
         ProblemDetails problemDetails = new ProblemDetails
         {
             Status = statusCode,
-            Detail = exception.Message
+            Detail = detail
         };
 
         bool result = await problemDetailsService.TryWriteAsync(new ProblemDetailsContext

@@ -478,6 +478,19 @@ public class MovieTests(CinemaBookingSystemFixture cinemaBookingSystemFixture) :
     }
 
     [Fact]
+    public async Task DeleteMovie_InputConcurrentDeletesOfSameMovie_ReturnsOneNoContentAndNotFound()
+    {
+        using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient(asAdmin: true);
+
+        HttpResponseMessage[] responses = await Task.WhenAll(Enumerable.Range(1, 10)
+            .Select(attempt => client.DeleteAsync("/movies/2")));
+
+        Assert.Single(responses, response => response.StatusCode == HttpStatusCode.NoContent);
+        Assert.All(responses.Where(response => response.StatusCode != HttpStatusCode.NoContent),
+            response => Assert.Equal(HttpStatusCode.NotFound, response.StatusCode));
+    }
+
+    [Fact]
     public async Task DeleteMovie_InputNoAdmin_ReturnsForbidden()
     {
         using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient();

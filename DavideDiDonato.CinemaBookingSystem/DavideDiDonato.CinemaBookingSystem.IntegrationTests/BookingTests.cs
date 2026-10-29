@@ -541,6 +541,20 @@ public class BookingTests(CinemaBookingSystemFixture cinemaBookingSystemFixture)
     }
 
     [Fact]
+    public async Task DeleteBooking_InputConcurrentDeletesOfSameBooking_ReturnsOneNoContentAndNotFound()
+    {
+        using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient(userId: 1);
+        Booking booking = await CommonBookSeat(client, screeningId: 1, rowId: 1, seatNumber: 5);
+
+        HttpResponseMessage[] responses = await Task.WhenAll(Enumerable.Range(1, 10)
+            .Select(attempt => client.DeleteAsync($"/bookings/{booking.Id}")));
+
+        Assert.Single(responses, response => response.StatusCode == HttpStatusCode.NoContent);
+        Assert.All(responses.Where(response => response.StatusCode != HttpStatusCode.NoContent),
+            response => Assert.Equal(HttpStatusCode.NotFound, response.StatusCode));
+    }
+
+    [Fact]
     public async Task DeleteBooking_InputPastScreeningBooking_ReturnsBadRequest()
     {
         using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient(userId: 1);

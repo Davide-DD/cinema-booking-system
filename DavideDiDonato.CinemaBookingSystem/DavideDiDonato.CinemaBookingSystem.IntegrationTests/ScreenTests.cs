@@ -344,6 +344,19 @@ public class ScreenTests(CinemaBookingSystemFixture cinemaBookingSystemFixture) 
     }
 
     [Fact]
+    public async Task DeleteScreen_InputConcurrentDeletesOfSameScreen_ReturnsOneNoContentAndNotFound()
+    {
+        using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient(asAdmin: true);
+
+        HttpResponseMessage[] responses = await Task.WhenAll(Enumerable.Range(1, 10)
+            .Select(attempt => client.DeleteAsync("/screens/2")));
+
+        Assert.Single(responses, response => response.StatusCode == HttpStatusCode.NoContent);
+        Assert.All(responses.Where(response => response.StatusCode != HttpStatusCode.NoContent),
+            response => Assert.Equal(HttpStatusCode.NotFound, response.StatusCode));
+    }
+
+    [Fact]
     public async Task DeleteScreen_InputNoAdmin_ReturnsForbidden()
     {
         using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient();
