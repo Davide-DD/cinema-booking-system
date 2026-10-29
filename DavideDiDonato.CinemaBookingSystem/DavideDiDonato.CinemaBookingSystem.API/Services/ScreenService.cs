@@ -20,6 +20,13 @@ public class ScreenService(CinemaBookingSystemDbContext dbContext) : IScreenServ
             .ToArrayAsync(cancellationToken);
     }
 
+    public async Task<Screen?> GetScreenAsync(int id, CancellationToken cancellationToken)
+    {
+        return await dbContext.Screens.Where(e => e.Id == id)
+            .Include(e => e.Rows)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
     public async Task DeleteScreenAsync(ClaimsPrincipal currentUser, int id, CancellationToken cancellationToken)
     {
         Screen? screen = await dbContext.Screens.FindAsync([id], cancellationToken);

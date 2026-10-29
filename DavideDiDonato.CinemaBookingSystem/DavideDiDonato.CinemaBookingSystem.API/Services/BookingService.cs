@@ -8,7 +8,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace DavideDiDonato.CinemaBookingSystem.API.Services;
 
-public class BookingService(CinemaBookingSystemDbContext dbContext) : IBookingService
+public class BookingService(CinemaBookingSystemDbContext dbContext, IMovieService movieService,
+    IScreenService screenService) : IBookingService
 {
     public async Task<List<Booking>> BookScreeningsAsync(ClaimsPrincipal currentUser, BookingRequest[] bookingRequests,
         CancellationToken cancellationToken)
@@ -153,9 +154,7 @@ public class BookingService(CinemaBookingSystemDbContext dbContext) : IBookingSe
     {
         Screening screening = await GetBookingScreeningIfValid(booking, cancellationToken);
 
-        Screen? screen = await dbContext.Screens.Where(e => e.Id == screening.ScreenId)
-            .Include(e => e.Rows)
-            .FirstOrDefaultAsync(cancellationToken);
+        Screen? screen = await screenService.GetScreenAsync(screening.ScreenId, cancellationToken);
         if (screen == null)
             throw new CinemaBookingSystemApiException(HttpStatusCode.BadRequest, "The screen doesn't exist");
         if (enforceValidity && screen.Rows.All(e =>
@@ -169,7 +168,7 @@ public class BookingService(CinemaBookingSystemDbContext dbContext) : IBookingSe
     {
         if (booking == null) throw new CinemaBookingSystemApiException(HttpStatusCode.NotFound, "Booking is null");
 
-        Screening? screening = await dbContext.Screenings.FindAsync([booking.ScreeningId], cancellationToken);
+        Screening? screening = await movieService.GetScreeningAsync(booking.ScreeningId, cancellationToken);
         if (screening == null)
             throw new CinemaBookingSystemApiException(HttpStatusCode.BadRequest, "The screening doesn't exist");
         if (screening.DateTime.ToUniversalTime() < DateTime.UtcNow)

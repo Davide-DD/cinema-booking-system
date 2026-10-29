@@ -19,6 +19,11 @@ public class MovieService(CinemaBookingSystemDbContext dbContext): IMovieService
             .ToArrayAsync(cancellationToken);
     }
 
+    public async Task<Screening?> GetScreeningAsync(int id, CancellationToken cancellationToken)
+    {
+        return await dbContext.Screenings.FindAsync([id], cancellationToken);
+    }
+
     public async Task DeleteMovieAsync(ClaimsPrincipal currentUser, int id, CancellationToken cancellationToken)
     {
         Movie? movie = await dbContext.Movies.FindAsync([id], cancellationToken);
