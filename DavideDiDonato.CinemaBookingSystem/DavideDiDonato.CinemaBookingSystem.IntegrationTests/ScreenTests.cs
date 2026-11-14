@@ -1,6 +1,7 @@
 ﻿using System.Net;
 using System.Net.Http.Json;
 using System.Text;
+using DavideDiDonato.CinemaBookingSystem.API.Contracts;
 using DavideDiDonato.CinemaBookingSystem.Domain;
 using DavideDiDonato.CinemaBookingSystem.Infrastructure.Database;
 using Microsoft.EntityFrameworkCore;
@@ -26,11 +27,12 @@ public class ScreenTests(CinemaBookingSystemFixture cinemaBookingSystemFixture) 
     {
         using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient();
 
-        Screen[]? screens = await client.GetFromJsonAsync<Screen[]>("/screens?page=1&pageSize=10");
+        PagedResult<Screen>? screens =
+            await client.GetFromJsonAsync<PagedResult<Screen>>("/v1/screens?page=1&pageSize=10");
 
         Assert.NotNull(screens);
-        Assert.Equal(2, screens.Length);
-        Assert.All(screens, screen => Assert.Equal(3, screen.Rows.Count));
+        Assert.Equal(2, screens.Items.Length);
+        Assert.All(screens.Items, screen => Assert.Equal(3, screen.Rows.Count));
     }
 
     [Fact]
@@ -38,10 +40,11 @@ public class ScreenTests(CinemaBookingSystemFixture cinemaBookingSystemFixture) 
     {
         using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient();
 
-        Screen[]? screens = await client.GetFromJsonAsync<Screen[]>("/screens?page=2&pageSize=1");
+        PagedResult<Screen>? screens =
+            await client.GetFromJsonAsync<PagedResult<Screen>>("/v1/screens?page=2&pageSize=1");
 
         Assert.NotNull(screens);
-        Screen screen = Assert.Single(screens);
+        Screen screen = Assert.Single(screens.Items);
         Assert.Equal(2, screen.Id);
     }
 
@@ -50,10 +53,11 @@ public class ScreenTests(CinemaBookingSystemFixture cinemaBookingSystemFixture) 
     {
         using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient();
 
-        Screen[]? screens = await client.GetFromJsonAsync<Screen[]>("/screens?page=0&pageSize=10");
+        PagedResult<Screen>? screens =
+            await client.GetFromJsonAsync<PagedResult<Screen>>("/v1/screens?page=0&pageSize=10");
 
         Assert.NotNull(screens);
-        Assert.Equal(2, screens.Length);
+        Assert.Equal(2, screens.Items.Length);
     }
 
     [Fact]
@@ -61,10 +65,10 @@ public class ScreenTests(CinemaBookingSystemFixture cinemaBookingSystemFixture) 
     {
         using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient();
 
-        Screen[]? screens = await client.GetFromJsonAsync<Screen[]>("/screens");
+        PagedResult<Screen>? screens = await client.GetFromJsonAsync<PagedResult<Screen>>("/v1/screens");
 
         Assert.NotNull(screens);
-        Assert.Equal(2, screens.Length);
+        Assert.Equal(2, screens.Items.Length);
     }
 
     [Fact]
@@ -72,13 +76,35 @@ public class ScreenTests(CinemaBookingSystemFixture cinemaBookingSystemFixture) 
     {
         using HttpClient client = cinemaBookingSystemFixture.WebApplicationFactory.CreateClient();
 
-        using HttpResponseMessage response = await client.GetAsync("/screens?page=1&pageSize=10");
+        using HttpResponseMessage response = await client.GetAsync("/v1/screens?page=1&pageSize=10");
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
     [Fact]
-    public async Task CreateOrUpdateScreen_InputNewScreen_ReturnsCreatedScreen()
+    public async Task GetScreen_InputExistingId_ReturnsScreenWithRows()
+    {
+        using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient();
+
+        Screen? screen = await client.GetFromJsonAsync<Screen>("/v1/screens/2");
+
+        Assert.NotNull(screen);
+        Assert.Equal(2, screen.Number);
+        Assert.Equal(3, screen.Rows.Count);
+    }
+
+    [Fact]
+    public async Task GetScreen_InputNotExistingId_ReturnsNotFound()
+    {
+        using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient();
+
+        using HttpResponseMessage response = await client.GetAsync("/v1/screens/99");
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task CreateScreen_InputNewScreen_ReturnsCreatedScreen()
     {
         using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient(asAdmin: true);
         Screen screen = new Screen
@@ -99,9 +125,9 @@ public class ScreenTests(CinemaBookingSystemFixture cinemaBookingSystemFixture) 
             }
         };
 
-        using HttpResponseMessage response = await client.PutAsJsonAsync("/screens", screen);
+        using HttpResponseMessage response = await client.PostAsJsonAsync("/v1/screens", screen);
 
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         Screen? responseScreen = await response.Content.ReadFromJsonAsync<Screen>();
         Assert.NotNull(responseScreen);
         Screen? createdScreen = await CommonGetScreen(responseScreen.Id);
@@ -111,13 +137,54 @@ public class ScreenTests(CinemaBookingSystemFixture cinemaBookingSystemFixture) 
     }
 
     [Fact]
-    public async Task CreateOrUpdateScreen_InputExistingScreenWithNewNumber_UpdatesNumber()
+    public async Task CreateScreen_InputNewScreen_ReturnsLocationOfCreatedScreen()
+    {
+        using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient(asAdmin: true);
+        Screen screen = new Screen
+        {
+            Number = 3
+        };
+
+        using HttpResponseMessage response = await client.PostAsJsonAsync("/v1/screens", screen);
+
+        Screen? responseScreen = await response.Content.ReadFromJsonAsync<Screen>();
+        Assert.NotNull(responseScreen);
+        Assert.Equal($"/v1/screens/{responseScreen.Id}", response.Headers.Location?.AbsolutePath);
+    }
+
+    [Fact]
+    public async Task CreateScreen_InputExistingScreen_ReturnsBadRequest()
+    {
+        using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient(asAdmin: true);
+        Screen screen = (await CommonGetScreen(1))!;
+
+        using HttpResponseMessage response = await client.PostAsJsonAsync("/v1/screens", screen);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task CreateScreen_InputNoAdmin_ReturnsForbidden()
+    {
+        using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient();
+        Screen screen = new Screen
+        {
+            Number = 3
+        };
+
+        using HttpResponseMessage response = await client.PostAsJsonAsync("/v1/screens", screen);
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task UpdateScreen_InputExistingScreenWithNewNumber_UpdatesNumber()
     {
         using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient(asAdmin: true);
         Screen screen = (await CommonGetScreen(1))!;
         screen.Number = 3;
 
-        using HttpResponseMessage response = await client.PutAsJsonAsync("/screens/1", screen);
+        using HttpResponseMessage response = await client.PutAsJsonAsync("/v1/screens/1", screen);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Screen? updatedScreen = await CommonGetScreen(1);
@@ -125,13 +192,13 @@ public class ScreenTests(CinemaBookingSystemFixture cinemaBookingSystemFixture) 
     }
 
     [Fact]
-    public async Task CreateOrUpdateScreen_InputExistingScreenWithoutRow_RemovesRow()
+    public async Task UpdateScreen_InputExistingScreenWithoutRow_RemovesRow()
     {
         using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient(asAdmin: true);
         Screen screen = (await CommonGetScreen(1))!;
         screen.Rows.Remove(screen.Rows.Single(row => row.Id == 3));
 
-        using HttpResponseMessage response = await client.PutAsJsonAsync("/screens/1", screen);
+        using HttpResponseMessage response = await client.PutAsJsonAsync("/v1/screens/1", screen);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Screen? updatedScreen = await CommonGetScreen(1);
@@ -141,14 +208,14 @@ public class ScreenTests(CinemaBookingSystemFixture cinemaBookingSystemFixture) 
     }
 
     [Fact]
-    public async Task CreateOrUpdateScreen_InputExistingScreenWithoutBookedRow_ReturnsConflict()
+    public async Task UpdateScreen_InputExistingScreenWithoutBookedRow_ReturnsConflict()
     {
         using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient(asAdmin: true);
         await CommonAddBooking(screeningId: 1, rowId: 3, seatNumber: 5);
         Screen screen = (await CommonGetScreen(1))!;
         screen.Rows.Remove(screen.Rows.Single(row => row.Id == 3));
 
-        using HttpResponseMessage response = await client.PutAsJsonAsync("/screens/1", screen);
+        using HttpResponseMessage response = await client.PutAsJsonAsync("/v1/screens/1", screen);
 
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
         Screen? notUpdatedScreen = await CommonGetScreen(1);
@@ -157,7 +224,7 @@ public class ScreenTests(CinemaBookingSystemFixture cinemaBookingSystemFixture) 
     }
 
     [Fact]
-    public async Task CreateOrUpdateScreen_InputExistingScreenWithNewRow_AddsRow()
+    public async Task UpdateScreen_InputExistingScreenWithNewRow_AddsRow()
     {
         using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient(asAdmin: true);
         Screen screen = (await CommonGetScreen(1))!;
@@ -168,7 +235,7 @@ public class ScreenTests(CinemaBookingSystemFixture cinemaBookingSystemFixture) 
             ScreenId = 1
         });
 
-        using HttpResponseMessage response = await client.PutAsJsonAsync("/screens/1", screen);
+        using HttpResponseMessage response = await client.PutAsJsonAsync("/v1/screens/1", screen);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Screen? updatedScreen = await CommonGetScreen(1);
@@ -176,7 +243,7 @@ public class ScreenTests(CinemaBookingSystemFixture cinemaBookingSystemFixture) 
     }
 
     [Fact]
-    public async Task CreateOrUpdateScreen_InputExistingScreenWithTwoNewRows_AddsBothRows()
+    public async Task UpdateScreen_InputExistingScreenWithTwoNewRows_AddsBothRows()
     {
         using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient(asAdmin: true);
         Screen screen = (await CommonGetScreen(1))!;
@@ -188,7 +255,7 @@ public class ScreenTests(CinemaBookingSystemFixture cinemaBookingSystemFixture) 
                 ScreenId = 1
             });
 
-        using HttpResponseMessage response = await client.PutAsJsonAsync("/screens/1", screen);
+        using HttpResponseMessage response = await client.PutAsJsonAsync("/v1/screens/1", screen);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Screen? updatedScreen = await CommonGetScreen(1);
@@ -196,7 +263,7 @@ public class ScreenTests(CinemaBookingSystemFixture cinemaBookingSystemFixture) 
     }
 
     [Fact]
-    public async Task CreateOrUpdateScreen_InputRowsWithAnotherScreenId_KeepsRowsInScreen()
+    public async Task UpdateScreen_InputRowsWithAnotherScreenId_KeepsRowsInScreen()
     {
         using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient(asAdmin: true);
         Screen screen = (await CommonGetScreen(1))!;
@@ -208,7 +275,7 @@ public class ScreenTests(CinemaBookingSystemFixture cinemaBookingSystemFixture) 
             ScreenId = 2
         });
 
-        using HttpResponseMessage response = await client.PutAsJsonAsync("/screens/1", screen);
+        using HttpResponseMessage response = await client.PutAsJsonAsync("/v1/screens/1", screen);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Screen? updatedScreen = await CommonGetScreen(1);
@@ -218,27 +285,27 @@ public class ScreenTests(CinemaBookingSystemFixture cinemaBookingSystemFixture) 
     }
 
     [Fact]
-    public async Task CreateOrUpdateScreen_InputRowOfAnotherScreen_ReturnsBadRequest()
+    public async Task UpdateScreen_InputRowOfAnotherScreen_ReturnsBadRequest()
     {
         using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient(asAdmin: true);
         Screen screen = (await CommonGetScreen(1))!;
         Screen anotherScreen = (await CommonGetScreen(2))!;
         screen.Rows.Add(anotherScreen.Rows.First());
 
-        using HttpResponseMessage response = await client.PutAsJsonAsync("/screens/1", screen);
+        using HttpResponseMessage response = await client.PutAsJsonAsync("/v1/screens/1", screen);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
     [Fact]
-    public async Task CreateOrUpdateScreen_InputFewerSeatsThanBookedSeat_ReturnsConflict()
+    public async Task UpdateScreen_InputFewerSeatsThanBookedSeat_ReturnsConflict()
     {
         using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient(asAdmin: true);
         await CommonAddBooking(screeningId: 1, rowId: 1, seatNumber: 9);
         Screen screen = (await CommonGetScreen(1))!;
         screen.Rows.Single(row => row.Id == 1).Seats = 8;
 
-        using HttpResponseMessage response = await client.PutAsJsonAsync("/screens/1", screen);
+        using HttpResponseMessage response = await client.PutAsJsonAsync("/v1/screens/1", screen);
 
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
         Screen? notUpdatedScreen = await CommonGetScreen(1);
@@ -246,14 +313,14 @@ public class ScreenTests(CinemaBookingSystemFixture cinemaBookingSystemFixture) 
     }
 
     [Fact]
-    public async Task CreateOrUpdateScreen_InputFewerSeatsKeepingBookedSeats_UpdatesSeats()
+    public async Task UpdateScreen_InputFewerSeatsKeepingBookedSeats_UpdatesSeats()
     {
         using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient(asAdmin: true);
         await CommonAddBooking(screeningId: 1, rowId: 1, seatNumber: 5);
         Screen screen = (await CommonGetScreen(1))!;
         screen.Rows.Single(row => row.Id == 1).Seats = 8;
 
-        using HttpResponseMessage response = await client.PutAsJsonAsync("/screens/1", screen);
+        using HttpResponseMessage response = await client.PutAsJsonAsync("/v1/screens/1", screen);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Screen? updatedScreen = await CommonGetScreen(1);
@@ -261,18 +328,18 @@ public class ScreenTests(CinemaBookingSystemFixture cinemaBookingSystemFixture) 
     }
 
     [Fact]
-    public async Task CreateOrUpdateScreen_InputMismatchingId_ReturnsBadRequest()
+    public async Task UpdateScreen_InputMismatchingId_ReturnsBadRequest()
     {
         using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient(asAdmin: true);
         Screen screen = (await CommonGetScreen(1))!;
 
-        using HttpResponseMessage response = await client.PutAsJsonAsync("/screens/2", screen);
+        using HttpResponseMessage response = await client.PutAsJsonAsync("/v1/screens/2", screen);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
     [Fact]
-    public async Task CreateOrUpdateScreen_InputNotExistingId_ReturnsNotFound()
+    public async Task UpdateScreen_InputNotExistingId_ReturnsNotFound()
     {
         using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient(asAdmin: true);
         Screen screen = new Screen
@@ -281,13 +348,13 @@ public class ScreenTests(CinemaBookingSystemFixture cinemaBookingSystemFixture) 
             Number = 99
         };
 
-        using HttpResponseMessage response = await client.PutAsJsonAsync("/screens/99", screen);
+        using HttpResponseMessage response = await client.PutAsJsonAsync("/v1/screens/99", screen);
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
     [Fact]
-    public async Task CreateOrUpdateScreen_InputRowWithoutSeats_ReturnsBadRequest()
+    public async Task UpdateScreen_InputRowWithoutSeats_ReturnsBadRequest()
     {
         using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient(asAdmin: true);
         Screen screen = (await CommonGetScreen(1))!;
@@ -298,13 +365,13 @@ public class ScreenTests(CinemaBookingSystemFixture cinemaBookingSystemFixture) 
             ScreenId = 1
         });
 
-        using HttpResponseMessage response = await client.PutAsJsonAsync("/screens/1", screen);
+        using HttpResponseMessage response = await client.PutAsJsonAsync("/v1/screens/1", screen);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
     [Fact]
-    public async Task CreateOrUpdateScreen_InputRowWithTooManySeats_ReturnsBadRequest()
+    public async Task UpdateScreen_InputRowWithTooManySeats_ReturnsBadRequest()
     {
         using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient(asAdmin: true);
         Screen screen = (await CommonGetScreen(1))!;
@@ -315,42 +382,42 @@ public class ScreenTests(CinemaBookingSystemFixture cinemaBookingSystemFixture) 
             ScreenId = 1
         });
 
-        using HttpResponseMessage response = await client.PutAsJsonAsync("/screens/1", screen);
+        using HttpResponseMessage response = await client.PutAsJsonAsync("/v1/screens/1", screen);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
     [Fact]
-    public async Task CreateOrUpdateScreen_InputNullRows_ReturnsBadRequest()
+    public async Task CreateScreen_InputNullRows_ReturnsBadRequest()
     {
         using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient(asAdmin: true);
         using StringContent content = new StringContent("{\"number\":3,\"rows\":null}", Encoding.UTF8,
             "application/json");
 
-        using HttpResponseMessage response = await client.PutAsync("/screens", content);
+        using HttpResponseMessage response = await client.PostAsync("/v1/screens", content);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
     [Fact]
-    public async Task CreateOrUpdateScreen_InputNullRow_ReturnsBadRequest()
+    public async Task CreateScreen_InputNullRow_ReturnsBadRequest()
     {
         using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient(asAdmin: true);
         using StringContent content = new StringContent("{\"number\":3,\"rows\":[null]}", Encoding.UTF8,
             "application/json");
 
-        using HttpResponseMessage response = await client.PutAsync("/screens", content);
+        using HttpResponseMessage response = await client.PostAsync("/v1/screens", content);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
     [Fact]
-    public async Task CreateOrUpdateScreen_InputNoAdmin_ReturnsForbidden()
+    public async Task UpdateScreen_InputNoAdmin_ReturnsForbidden()
     {
         using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient();
         Screen screen = (await CommonGetScreen(1))!;
 
-        using HttpResponseMessage response = await client.PutAsJsonAsync("/screens/1", screen);
+        using HttpResponseMessage response = await client.PutAsJsonAsync("/v1/screens/1", screen);
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
@@ -360,7 +427,7 @@ public class ScreenTests(CinemaBookingSystemFixture cinemaBookingSystemFixture) 
     {
         using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient(asAdmin: true);
 
-        using HttpResponseMessage response = await client.DeleteAsync("/screens/2");
+        using HttpResponseMessage response = await client.DeleteAsync("/v1/screens/2");
 
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
         Assert.Null(await CommonGetScreen(2));
@@ -371,7 +438,7 @@ public class ScreenTests(CinemaBookingSystemFixture cinemaBookingSystemFixture) 
     {
         using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient(asAdmin: true);
 
-        using HttpResponseMessage response = await client.DeleteAsync("/screens/99");
+        using HttpResponseMessage response = await client.DeleteAsync("/v1/screens/99");
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
@@ -382,7 +449,7 @@ public class ScreenTests(CinemaBookingSystemFixture cinemaBookingSystemFixture) 
         using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient(asAdmin: true);
 
         HttpResponseMessage[] responses = await Task.WhenAll(Enumerable.Range(1, 10)
-            .Select(attempt => client.DeleteAsync("/screens/2")));
+            .Select(attempt => client.DeleteAsync("/v1/screens/2")));
 
         Assert.Single(responses, response => response.StatusCode == HttpStatusCode.NoContent);
         Assert.All(responses.Where(response => response.StatusCode != HttpStatusCode.NoContent),
@@ -394,7 +461,7 @@ public class ScreenTests(CinemaBookingSystemFixture cinemaBookingSystemFixture) 
     {
         using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient();
 
-        using HttpResponseMessage response = await client.DeleteAsync("/screens/2");
+        using HttpResponseMessage response = await client.DeleteAsync("/v1/screens/2");
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
         Assert.NotNull(await CommonGetScreen(2));

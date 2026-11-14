@@ -250,14 +250,13 @@ public class BookingService(CinemaBookingSystemDbContext dbContext, IMovieServic
         return true;
     }
 
-    public async Task<Booking[]> GetBookingsAsync(ClaimsPrincipal currentUser, int page, int pageSize,
+    public async Task<PagedResult<Booking>> GetBookingsAsync(ClaimsPrincipal currentUser, int page, int pageSize,
         CancellationToken cancellationToken)
     {
         int currentUserId = int.Parse(currentUser.FindFirst(e => e.Type == ClaimTypes.NameIdentifier)!.Value);
         return await dbContext.Bookings.Where(e => e.UserId == currentUserId)
             .OrderBy(e => e.Id)
-            .Paginate(page, pageSize)
-            .ToArrayAsync(cancellationToken);
+            .ToPagedResultAsync(page, pageSize, cancellationToken);
     }
 
     public async Task<RowAvailability[]> GetScreeningSeatsAsync(int screeningId, CancellationToken cancellationToken)
