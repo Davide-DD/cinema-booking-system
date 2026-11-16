@@ -14,7 +14,7 @@ docker compose up --build
 
 Open Swagger UI at http://localhost:8080/swagger, press **Authorize** and type `1` to act as a customer or `1:Admin` to act as an admin. The database starts with two screens, two movies and four upcoming screenings, and it is reset every time the API starts.
 
-The design choices are explained in [Domains](#domains), the booking rules in [Booking rules](#booking-rules) and what is left out in [Out of scope for now](#out-of-scope-for-now).
+The design choices are explained in [Domains](#domains), the API conventions in [Endpoints](#endpoints) and [Versioning](#versioning), the booking rules in [Booking rules](#booking-rules) and what is left out in [Out of scope for now](#out-of-scope-for-now).
 
 ## Projects
 
@@ -32,9 +32,9 @@ The API is a single service split into three domains:
 
 | Domain | Owns | Endpoints | Service |
 |---|---|---|---|
-| Programming | Movies and their screenings | `/movies` | `MovieService` |
+| Programming | Movies and their screenings | `/movies`, `/screenings` | `MovieService` |
 | Venue | Screens and their rows | `/screens` | `ScreenService` |
-| Booking | Bookings | `/bookings` | `BookingService`, `BookedSeatService` |
+| Booking | Bookings | `/bookings`, `/screenings/{id}/seats`, `/screenings/{id}/availability` | `BookingService`, `BookedSeatService` |
 
 Each service reads and writes only the tables of its own domain. Booking needs the date of a screening and the rows of its screen: it asks `MovieService.GetScreeningAsync` and `ScreenService.GetScreenAsync` for them instead of querying their tables. In the same way, Programming asks `ScreenService.GetScreenAsync` whether the screen of a screening exists. Before a change that could leave booked seats behind, Programming and Venue ask Booking through `BookedSeatService`, which is separate from `BookingService` because that one already depends on their services. Entities refer to other domains only by id (`Booking.ScreeningId`, `Booking.RowId`, `Screening.ScreenId`), never through navigation properties.
 
@@ -96,25 +96,44 @@ In Swagger UI, press **Authorize** and type only the token (`1` or `1:Admin`).
 
 | Method | Route | Allowed to | Description |
 |---|---|---|---|
-| `GET` | `/movies?page=1&pageSize=10` | Any user | Movies with their screenings |
-| `PUT` | `/movies` or `/movies/{id}` | Admin | Creates a movie (no id) or updates it with its screenings |
-| `DELETE` | `/movies/{id}` | Admin | Deletes a movie with its screenings and their bookings |
-| `GET` | `/screens?page=1&pageSize=10` | Any user | Screens with their rows |
-| `PUT` | `/screens` or `/screens/{id}` | Admin | Creates a screen (no id) or updates it with its rows |
-| `DELETE` | `/screens/{id}` | Admin | Deletes a screen with its rows, screenings and bookings |
-| `GET` | `/bookings?page=1&pageSize=10` | Any user | Bookings of the current user |
-| `POST` | `/bookings` | Any user | Books one or more seats |
-| `GET` | `/bookings/availability?screeningId=1&rowId=1&seatNumber=5` | Any user | Tells whether a seat is still free |
-| `GET` | `/bookings/seats?screeningId=1` | Any user | Rows of the screening's screen with their booked seats, to draw the seat map |
-| `DELETE` | `/bookings/{id}` | Booking owner | Cancels a booking of an upcoming screening |
+| `GET` | `/v1/movies?page=1&pageSize=10` | Any user | Movies with their screenings |
+| `GET` | `/v1/movies/{id}` | Any user | A movie with its screenings |
+| `POST` | `/v1/movies` | Admin | Creates a movie with its screenings |
+| `PUT` | `/v1/movies/{id}` | Admin | Updates a movie with its screenings |
+| `DELETE` | `/v1/movies/{id}` | Admin | Deletes a movie with its screenings and their bookings |
+| `GET` | `/v1/screenings?movieId=1&screenId=1&from=...&to=...&page=1&pageSize=10` | Any user | Screenings by date, filtered by movie, screen and date range |
+| `GET` | `/v1/screenings/{id}/seats` | Any user | Rows of the screening's screen with their booked seats, to draw the seat map |
+| `GET` | `/v1/screenings/{id}/availability?rowId=1&seatNumber=5` | Any user | Tells whether a seat is still free |
+| `GET` | `/v1/screens?page=1&pageSize=10` | Any user | Screens with their rows |
+| `GET` | `/v1/screens/{id}` | Any user | A screen with its rows |
+| `POST` | `/v1/screens` | Admin | Creates a screen with its rows |
+| `PUT` | `/v1/screens/{id}` | Admin | Updates a screen with its rows |
+| `DELETE` | `/v1/screens/{id}` | Admin | Deletes a screen with its rows, screenings and bookings |
+| `GET` | `/v1/bookings?page=1&pageSize=10` | Any user | Bookings of the current user |
+| `POST` | `/v1/bookings` | Any user | Books one or more seats |
+| `DELETE` | `/v1/bookings/{id}` | Booking owner | Cancels a booking of an upcoming screening |
+
+Creating a movie or a screen returns `201 Created` with its location, like `/v1/movies/3`. The body of a new movie or screen can't have an id: an id returns `400 Bad Request`, since existing ones are updated with `PUT`. Booking returns `201 Created` with the bookings, without a location, because a single request can book several screenings.
 
 Updating a movie or a screen replaces its screenings or rows with the ones in the body: the ones left out are deleted. New or rescheduled screenings must be in the future, while past screenings can stay in the body unchanged. Screening dates must include a time zone (`Z` or an offset like `+01:00`) and are stored in UTC.
 
 Mistakes can be corrected freely until they affect bookings. Moving a screening with bookings to another screen, removing a row with bookings or lowering the seats of a row below a booked seat returns `409 Conflict` instead of cancelling those bookings or leaving them on seats that don't exist: the customers holding them need a decision, not a silent change. Deleting the screening and creating it again cancels its bookings.
 
-Lists are ordered by id. `page` defaults to 1 and `pageSize` to 10. A `page` lower than 1 is treated as 1, a page past the end returns an empty list and `pageSize` is kept between 1 and 100.
+Lists are returned in pages, with the page and page size that were applied and the total number of records:
+
+```json
+{ "items": [ ... ], "page": 2, "pageSize": 10, "totalCount": 37 }
+```
+
+Movies, screens and bookings are ordered by id, screenings by date. `page` defaults to 1 and `pageSize` to 10. A `page` lower than 1 is treated as 1, a page past the end returns no items and `pageSize` is kept between 1 and 100.
+
+The screening filters can be combined, and all of them are optional. `from` includes screenings starting at that time, `to` excludes them, so `from=2026-11-20T00:00:00Z&to=2026-11-21T00:00:00Z` returns the screenings of November 20 in UTC. As in the body, dates must include a time zone, and a `+` in an offset must be encoded as `%2B` in the URL (`+01:00` becomes `%2B01:00`).
 
 Errors are returned as [problem details](https://www.rfc-editor.org/rfc/rfc9457) with the matching status code.
+
+## Versioning
+
+Every route starts with the API version, currently `/v1`, handled by [ASP.NET API Versioning](https://github.com/dotnet/aspnet-api-versioning). Responses list the supported versions in the `api-supported-versions` header, and a version that doesn't exist, like `/v2/movies`, returns `404 Not Found`. A breaking change, like a renamed field or a different response shape, would go in a `v2` group mapped next to `v1`, so existing clients keep working until `v1` is retired. The OpenAPI document is generated per version, at `/openapi/v1.json` for `v1`.
 
 ## Booking rules
 

@@ -12,12 +12,40 @@ namespace DavideDiDonato.CinemaBookingSystem.API.Services;
 public class MovieService(CinemaBookingSystemDbContext dbContext, IScreenService screenService,
     IBookedSeatService bookedSeatService) : IMovieService
 {
-    public async Task<Movie[]> GetMoviesAsync(ClaimsPrincipal currentUser, int page, int pageSize, CancellationToken cancellationToken)
+    public async Task<PagedResult<Movie>> GetMoviesAsync(ClaimsPrincipal currentUser, int page, int pageSize,
+        CancellationToken cancellationToken)
     {
         return await dbContext.Movies.Include(e => e.Screenings)
             .OrderBy(e => e.Id)
-            .Paginate(page, pageSize)
-            .ToArrayAsync(cancellationToken);
+            .ToPagedResultAsync(page, pageSize, cancellationToken);
+    }
+
+    public async Task<Movie?> GetMovieAsync(int id, CancellationToken cancellationToken)
+    {
+        return await dbContext.Movies.Where(e => e.Id == id)
+            .Include(e => e.Screenings)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
+    public async Task<PagedResult<Screening>> GetScreeningsAsync(int? movieId, int? screenId, DateTime? from,
+        DateTime? to, int page, int pageSize, CancellationToken cancellationToken)
+    {
+        if ((from != null && from.Value.Kind == DateTimeKind.Unspecified) ||
+            (to != null && to.Value.Kind == DateTimeKind.Unspecified))
+            throw new CinemaBookingSystemApiException(HttpStatusCode.BadRequest, "Dates must include a time zone");
+
+        // The database only accepts UTC dates
+        DateTime? utcFrom = from?.ToUniversalTime();
+        DateTime? utcTo = to?.ToUniversalTime();
+        IQueryable<Screening> screenings = dbContext.Screenings;
+        if (movieId != null) screenings = screenings.Where(e => e.MovieId == movieId);
+        if (screenId != null) screenings = screenings.Where(e => e.ScreenId == screenId);
+        if (utcFrom != null) screenings = screenings.Where(e => e.DateTime >= utcFrom);
+        if (utcTo != null) screenings = screenings.Where(e => e.DateTime < utcTo);
+
+        return await screenings.OrderBy(e => e.DateTime)
+            .ThenBy(e => e.Id)
+            .ToPagedResultAsync(page, pageSize, cancellationToken);
     }
 
     public async Task<Screening?> GetScreeningAsync(int id, CancellationToken cancellationToken)
@@ -35,6 +63,8 @@ public class MovieService(CinemaBookingSystemDbContext dbContext, IScreenService
 
     public async Task<Movie> CreateOrUpdateMovieAsync(int? id, Movie movie, CancellationToken cancellationToken)
     {
+        if (id == null && movie.Id != 0)
+            throw new CinemaBookingSystemApiException(HttpStatusCode.BadRequest, "A new movie can't have an id");
         if (id != null && id != movie.Id) throw new CinemaBookingSystemApiException(HttpStatusCode.BadRequest, "Movie id mismatch");
         // The body can still send null where the model doesn't allow it
         if (movie.Screenings == null || movie.Screenings.Any(e => e == null))
@@ -42,7 +72,8 @@ public class MovieService(CinemaBookingSystemDbContext dbContext, IScreenService
         Movie? existingMovie = await dbContext.Movies.Where(e => e.Id == movie.Id)
             .Include(e => e.Screenings)
             .FirstOrDefaultAsync(cancellationToken);
-        if (existingMovie == null && movie.Id != 0) throw new CinemaBookingSystemApiException(HttpStatusCode.NotFound, "Movie doesn't exist");
+        if (existingMovie == null && id != null)
+            throw new CinemaBookingSystemApiException(HttpStatusCode.NotFound, "Movie doesn't exist");
         foreach (Screening screening in movie.Screenings)
         {
             if (screening.Id != 0 &&

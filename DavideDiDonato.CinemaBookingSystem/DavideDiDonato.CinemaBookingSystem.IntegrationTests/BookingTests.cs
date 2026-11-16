@@ -295,8 +295,8 @@ public class BookingTests(CinemaBookingSystemFixture cinemaBookingSystemFixture)
         HttpResponseMessage[] responses = await Task.WhenAll(clients
             .Select(client => CommonPostBooking(client, screeningId: 1, rowId: 1, seatNumber: 5)));
 
-        Assert.Single(responses, response => response.StatusCode == HttpStatusCode.OK);
-        Assert.All(responses.Where(response => response.StatusCode != HttpStatusCode.OK),
+        Assert.Single(responses, response => response.StatusCode == HttpStatusCode.Created);
+        Assert.All(responses.Where(response => response.StatusCode != HttpStatusCode.Created),
             response => Assert.Equal(HttpStatusCode.Conflict, response.StatusCode));
     }
 
@@ -336,7 +336,7 @@ public class BookingTests(CinemaBookingSystemFixture cinemaBookingSystemFixture)
         using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient();
         using StringContent content = new StringContent("[{\"screeningId\":\"1\"}]", Encoding.UTF8, "application/json");
 
-        using HttpResponseMessage response = await client.PostAsync("/bookings", content);
+        using HttpResponseMessage response = await client.PostAsync("/v1/bookings", content);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
@@ -347,7 +347,7 @@ public class BookingTests(CinemaBookingSystemFixture cinemaBookingSystemFixture)
         using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient();
         using StringContent content = new StringContent("[null]", Encoding.UTF8, "application/json");
 
-        using HttpResponseMessage response = await client.PostAsync("/bookings", content);
+        using HttpResponseMessage response = await client.PostAsync("/v1/bookings", content);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
@@ -358,7 +358,7 @@ public class BookingTests(CinemaBookingSystemFixture cinemaBookingSystemFixture)
         using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient();
         using StringContent content = new StringContent("null", Encoding.UTF8, "application/json");
 
-        using HttpResponseMessage response = await client.PostAsync("/bookings", content);
+        using HttpResponseMessage response = await client.PostAsync("/v1/bookings", content);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
@@ -374,7 +374,7 @@ public class BookingTests(CinemaBookingSystemFixture cinemaBookingSystemFixture)
             })
             .ToArray();
 
-        using HttpResponseMessage response = await client.PostAsJsonAsync("/bookings", bookingRequests);
+        using HttpResponseMessage response = await client.PostAsJsonAsync("/v1/bookings", bookingRequests);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
@@ -384,7 +384,8 @@ public class BookingTests(CinemaBookingSystemFixture cinemaBookingSystemFixture)
     {
         using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient();
 
-        using HttpResponseMessage response = await client.PostAsJsonAsync("/bookings", Array.Empty<BookingRequest>());
+        using HttpResponseMessage response =
+            await client.PostAsJsonAsync("/v1/bookings", Array.Empty<BookingRequest>());
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
@@ -459,10 +460,10 @@ public class BookingTests(CinemaBookingSystemFixture cinemaBookingSystemFixture)
         Booking booking = await CommonBookSeat(client, screeningId: 1, rowId: 1, seatNumber: 5);
         await CommonBookSeat(anotherUserClient, screeningId: 1, rowId: 1, seatNumber: 6);
 
-        Booking[]? bookings = await client.GetFromJsonAsync<Booking[]>("/bookings");
+        PagedResult<Booking>? bookings = await client.GetFromJsonAsync<PagedResult<Booking>>("/v1/bookings");
 
         Assert.NotNull(bookings);
-        Booking userBooking = Assert.Single(bookings);
+        Booking userBooking = Assert.Single(bookings.Items);
         Assert.Equal(booking.Id, userBooking.Id);
     }
 
@@ -471,7 +472,7 @@ public class BookingTests(CinemaBookingSystemFixture cinemaBookingSystemFixture)
     {
         using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient();
 
-        bool isAvailable = await client.GetFromJsonAsync<bool>("/bookings/availability?screeningId=1&rowId=1&seatNumber=5");
+        bool isAvailable = await client.GetFromJsonAsync<bool>("/v1/screenings/1/availability?rowId=1&seatNumber=5");
 
         Assert.True(isAvailable);
     }
@@ -482,7 +483,7 @@ public class BookingTests(CinemaBookingSystemFixture cinemaBookingSystemFixture)
         using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient();
         await CommonBookSeat(client, screeningId: 1, rowId: 1, seatNumber: 5);
 
-        bool isAvailable = await client.GetFromJsonAsync<bool>("/bookings/availability?screeningId=1&rowId=1&seatNumber=5");
+        bool isAvailable = await client.GetFromJsonAsync<bool>("/v1/screenings/1/availability?rowId=1&seatNumber=5");
 
         Assert.False(isAvailable);
     }
@@ -492,7 +493,8 @@ public class BookingTests(CinemaBookingSystemFixture cinemaBookingSystemFixture)
     {
         using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient();
 
-        using HttpResponseMessage response = await client.GetAsync("/bookings/availability?screeningId=1&rowId=1&seatNumber=11");
+        using HttpResponseMessage response =
+            await client.GetAsync("/v1/screenings/1/availability?rowId=1&seatNumber=11");
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
@@ -502,7 +504,8 @@ public class BookingTests(CinemaBookingSystemFixture cinemaBookingSystemFixture)
     {
         using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient();
 
-        using HttpResponseMessage response = await client.GetAsync("/bookings/availability?screeningId=1&rowId=1&seatNumber=0");
+        using HttpResponseMessage response =
+            await client.GetAsync("/v1/screenings/1/availability?rowId=1&seatNumber=0");
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
@@ -513,7 +516,7 @@ public class BookingTests(CinemaBookingSystemFixture cinemaBookingSystemFixture)
         using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient();
         await CommonBookSeat(client, screeningId: 1, rowId: 1, seatNumber: 5);
 
-        RowAvailability[]? rows = await client.GetFromJsonAsync<RowAvailability[]>("/bookings/seats?screeningId=1");
+        RowAvailability[]? rows = await client.GetFromJsonAsync<RowAvailability[]>("/v1/screenings/1/seats");
 
         // Screening 1 is in screen 1: three rows of 10 seats
         Assert.NotNull(rows);
@@ -527,7 +530,7 @@ public class BookingTests(CinemaBookingSystemFixture cinemaBookingSystemFixture)
     {
         using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient();
 
-        using HttpResponseMessage response = await client.GetAsync("/bookings/seats?screeningId=99");
+        using HttpResponseMessage response = await client.GetAsync("/v1/screenings/99/seats");
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
@@ -538,10 +541,10 @@ public class BookingTests(CinemaBookingSystemFixture cinemaBookingSystemFixture)
         using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient(userId: 1);
         Booking booking = await CommonBookSeat(client, screeningId: 1, rowId: 1, seatNumber: 5);
 
-        using HttpResponseMessage response = await client.DeleteAsync($"/bookings/{booking.Id}");
+        using HttpResponseMessage response = await client.DeleteAsync($"/v1/bookings/{booking.Id}");
 
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
-        Assert.True(await client.GetFromJsonAsync<bool>("/bookings/availability?screeningId=1&rowId=1&seatNumber=5"));
+        Assert.True(await client.GetFromJsonAsync<bool>("/v1/screenings/1/availability?rowId=1&seatNumber=5"));
     }
 
     [Fact]
@@ -551,7 +554,7 @@ public class BookingTests(CinemaBookingSystemFixture cinemaBookingSystemFixture)
         using HttpClient anotherUserClient = cinemaBookingSystemFixture.CreateAuthenticatedClient(userId: 2);
         Booking booking = await CommonBookSeat(client, screeningId: 1, rowId: 1, seatNumber: 5);
 
-        using HttpResponseMessage response = await anotherUserClient.DeleteAsync($"/bookings/{booking.Id}");
+        using HttpResponseMessage response = await anotherUserClient.DeleteAsync($"/v1/bookings/{booking.Id}");
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
@@ -561,7 +564,7 @@ public class BookingTests(CinemaBookingSystemFixture cinemaBookingSystemFixture)
     {
         using HttpClient client = cinemaBookingSystemFixture.CreateAuthenticatedClient();
 
-        using HttpResponseMessage response = await client.DeleteAsync("/bookings/99");
+        using HttpResponseMessage response = await client.DeleteAsync("/v1/bookings/99");
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
@@ -573,7 +576,7 @@ public class BookingTests(CinemaBookingSystemFixture cinemaBookingSystemFixture)
         Booking booking = await CommonBookSeat(client, screeningId: 1, rowId: 1, seatNumber: 5);
 
         HttpResponseMessage[] responses = await Task.WhenAll(Enumerable.Range(1, 10)
-            .Select(attempt => client.DeleteAsync($"/bookings/{booking.Id}")));
+            .Select(attempt => client.DeleteAsync($"/v1/bookings/{booking.Id}")));
 
         Assert.Single(responses, response => response.StatusCode == HttpStatusCode.NoContent);
         Assert.All(responses.Where(response => response.StatusCode != HttpStatusCode.NoContent),
@@ -593,15 +596,15 @@ public class BookingTests(CinemaBookingSystemFixture cinemaBookingSystemFixture)
             SeatNumber = 5
         });
 
-        using HttpResponseMessage response = await client.DeleteAsync($"/bookings/{booking.Id}");
+        using HttpResponseMessage response = await client.DeleteAsync($"/v1/bookings/{booking.Id}");
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
     private async Task<Booking[]> CommonBookScreenings(HttpClient client, params BookingRequest[] bookingRequests)
     {
-        using HttpResponseMessage response = await client.PostAsJsonAsync("/bookings", bookingRequests);
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        using HttpResponseMessage response = await client.PostAsJsonAsync("/v1/bookings", bookingRequests);
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
 
         Booking[] result = (await response.Content.ReadFromJsonAsync<Booking[]>())!;
 
@@ -625,7 +628,7 @@ public class BookingTests(CinemaBookingSystemFixture cinemaBookingSystemFixture)
     private async Task<HttpResponseMessage> CommonPostBooking(HttpClient client, int screeningId, int? rowId = null,
         int? seatNumber = null)
     {
-        HttpResponseMessage result = await client.PostAsJsonAsync("/bookings", new[]
+        HttpResponseMessage result = await client.PostAsJsonAsync("/v1/bookings", new[]
         {
             new BookingRequest
             {

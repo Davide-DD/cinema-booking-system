@@ -12,13 +12,12 @@ namespace DavideDiDonato.CinemaBookingSystem.API.Services;
 public class ScreenService(CinemaBookingSystemDbContext dbContext, IBookedSeatService bookedSeatService)
     : IScreenService
 {
-    public async Task<Screen[]> GetScreensAsync(ClaimsPrincipal currentUser, int page, int pageSize,
+    public async Task<PagedResult<Screen>> GetScreensAsync(ClaimsPrincipal currentUser, int page, int pageSize,
         CancellationToken cancellationToken)
     {
         return await dbContext.Screens.Include(e => e.Rows)
             .OrderBy(e => e.Id)
-            .Paginate(page, pageSize)
-            .ToArrayAsync(cancellationToken);
+            .ToPagedResultAsync(page, pageSize, cancellationToken);
     }
 
     public async Task<Screen?> GetScreenAsync(int id, CancellationToken cancellationToken)
@@ -38,6 +37,8 @@ public class ScreenService(CinemaBookingSystemDbContext dbContext, IBookedSeatSe
 
     public async Task<Screen> CreateOrUpdateScreenAsync(int? id, Screen screen, CancellationToken cancellationToken)
     {
+        if (id == null && screen.Id != 0)
+            throw new CinemaBookingSystemApiException(HttpStatusCode.BadRequest, "A new screen can't have an id");
         if (id != null && id != screen.Id) throw new CinemaBookingSystemApiException(HttpStatusCode.BadRequest, "Screen id mismatch");
         // The body can still send null where the model doesn't allow it
         if (screen.Rows == null || screen.Rows.Any(e => e == null))
@@ -45,7 +46,8 @@ public class ScreenService(CinemaBookingSystemDbContext dbContext, IBookedSeatSe
         Screen? existingScreen = await dbContext.Screens.Where(e => e.Id == screen.Id)
             .Include(e => e.Rows)
             .FirstOrDefaultAsync(cancellationToken);
-        if (existingScreen == null && screen.Id != 0) throw new CinemaBookingSystemApiException(HttpStatusCode.NotFound, "Screen doesn't exist");
+        if (existingScreen == null && id != null)
+            throw new CinemaBookingSystemApiException(HttpStatusCode.NotFound, "Screen doesn't exist");
         foreach (Row row in screen.Rows)
         {
             if (row.Id != 0 && (existingScreen == null || existingScreen.Rows.All(e => e.Id != row.Id)))

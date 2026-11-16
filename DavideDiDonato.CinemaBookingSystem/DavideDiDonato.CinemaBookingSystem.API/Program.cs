@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text.Json.Serialization;
+using Asp.Versioning;
 using DavideDiDonato.CinemaBookingSystem.API.Endpoints;
 using DavideDiDonato.CinemaBookingSystem.API.Exceptions;
 using DavideDiDonato.CinemaBookingSystem.API.Security;
@@ -15,27 +16,39 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddProblemDetails();
 builder.Services.AddValidation();
-builder.Services.AddOpenApi(options =>
-{
-    options.AddDocumentTransformer((document, context, cancellationToken) =>
+builder.Services.AddApiVersioning(options =>
     {
-        document.Components ??= new OpenApiComponents();
-        document.Components.SecuritySchemes ??= new Dictionary<string, IOpenApiSecurityScheme>();
-        document.Components.SecuritySchemes["Bearer"] = new OpenApiSecurityScheme
+        options.DefaultApiVersion = new ApiVersion(1);
+        options.ReportApiVersions = true;
+        options.ApiVersionReader = new UrlSegmentApiVersionReader();
+    })
+    .AddApiExplorer(options =>
+    {
+        // Names the OpenAPI document v1 and shows the routes as /v1/... instead of /v{version}/...
+        options.GroupNameFormat = "'v'V";
+        options.SubstituteApiVersionInUrl = true;
+    })
+    .AddOpenApi(options =>
+    {
+        options.Document.AddDocumentTransformer((document, context, cancellationToken) =>
         {
-            Type = SecuritySchemeType.Http,
-            Scheme = "bearer"
-        };
+            document.Components ??= new OpenApiComponents();
+            document.Components.SecuritySchemes ??= new Dictionary<string, IOpenApiSecurityScheme>();
+            document.Components.SecuritySchemes["Bearer"] = new OpenApiSecurityScheme
+            {
+                Type = SecuritySchemeType.Http,
+                Scheme = "bearer"
+            };
 
-        document.Security ??= new List<OpenApiSecurityRequirement>();
-        document.Security.Add(new OpenApiSecurityRequirement
-        {
-            [new OpenApiSecuritySchemeReference("Bearer", document)] = new List<string>()
+            document.Security ??= new List<OpenApiSecurityRequirement>();
+            document.Security.Add(new OpenApiSecurityRequirement
+            {
+                [new OpenApiSecuritySchemeReference("Bearer", document)] = new List<string>()
+            });
+
+            return Task.CompletedTask;
         });
-
-        return Task.CompletedTask;
     });
-});
 builder.Services.AddScoped<Seeder>();
 builder.Services.AddScoped<IBookingService, BookingService>();
 builder.Services.AddScoped<IBookedSeatService, BookedSeatService>();
@@ -70,7 +83,7 @@ var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
 {
-    app.MapOpenApi();
+    app.MapOpenApi().WithDocumentPerVersion();
     app.UseSwaggerUI(options => options.SwaggerEndpoint("/openapi/v1.json", "v1"));
     using IServiceScope scope = app.Services.CreateScope();
     await scope.ServiceProvider.GetRequiredService<Seeder>().SeedData();
@@ -86,8 +99,12 @@ app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapBookingEndpoints();
-app.MapMovieEndpoints();
-app.MapScreenEndpoints();
+RouteGroupBuilder versionOneGroup = app.NewVersionedApi()
+    .MapGroup("/v{version:apiVersion}")
+    .HasApiVersion(1);
+
+versionOneGroup.MapBookingEndpoints();
+versionOneGroup.MapMovieEndpoints();
+versionOneGroup.MapScreenEndpoints();
 
 app.Run();
